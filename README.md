@@ -35,7 +35,7 @@
 
 ## 🏗️ 系统架构
 
-![NL2SQL 系统架构](docs/images/nl2sql-architecture.png)
+![NL2SQL 系统架构](docs/images/nl2sql-architecture.jpg)
 
 ## ✨ 项目亮点
 
