@@ -3,16 +3,9 @@ Elasticsearch 客户端管理器
 """
 
 import asyncio
-import sys
-from pathlib import Path
 from typing import Optional
 
 from elasticsearch import AsyncElasticsearch
-
-if __name__ == "__main__":
-    _repo_root = Path(__file__).resolve().parents[2]
-    if str(_repo_root) not in sys.path:
-        sys.path.insert(0, str(_repo_root))
 
 from app.conf.app_config import ESConfig, app_config
 

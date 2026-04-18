@@ -4,16 +4,9 @@ Qdrant 客户端管理器
 
 import asyncio
 import random
-import sys
-from pathlib import Path
 from typing import Optional
 
 from qdrant_client import AsyncQdrantClient, models
-
-if __name__ == "__main__":
-    _repo_root = Path(__file__).resolve().parents[2]
-    if str(_repo_root) not in sys.path:
-        sys.path.insert(0, str(_repo_root))
 
 from app.conf.app_config import QdrantConfig, app_config
 
