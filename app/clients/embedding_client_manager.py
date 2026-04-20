@@ -1,5 +1,9 @@
 """
 Embedding 客户端管理模块
+
+统一创建和持有项目中的 Embedding 客户端
+当前通过配置中的 host 和 port 连接已启动好的 TEI 服务
+后续字段说明 指标说明 和用户问题的向量化都会通过这里提供的客户端完成
 """
 
 import asyncio

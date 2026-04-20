@@ -1,5 +1,8 @@
 """
 Elasticsearch 客户端管理器
+
+统一创建和管理 Elasticsearch 异步客户端，
+在元数据知识库体系里，它主要服务于字段真实取值的全文索引构建和检索
 """
 
 import asyncio

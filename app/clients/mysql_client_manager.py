@@ -1,5 +1,10 @@
 """
 MySQL 客户端管理模块
+
+统一创建和管理项目中的异步 MySQL 客户端，当前项目会同时连接两套 MySQL，
+一套是保存结构化元数据的 meta 数据库，一套是模拟教学数仓的 dw 数据库，
+模块对外提供可复用的客户端管理器和 session 工厂，
+方便脚本入口 服务层和仓储层按统一方式访问数据库
 """
 
 import asyncio
@@ -43,6 +48,7 @@ class MySQLClientManager:
 
 
 # 一套连元数据库，一套连数仓模拟库
+# 后续由不同 repository 按职责分别使用
 meta_mysql_client_manager = MySQLClientManager(app_config.db_meta)
 dw_mysql_client_manager = MySQLClientManager(app_config.db_dw)
 
