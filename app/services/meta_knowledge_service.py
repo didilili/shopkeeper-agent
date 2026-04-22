@@ -13,6 +13,8 @@ from omegaconf import OmegaConf
 
 from app.conf.meta_config import MetaConfig
 from app.core.log import logger
+from app.entities.column_info import ColumnInfo
+from app.entities.table_info import TableInfo
 from app.repositories.mysql.dw.dw_mysql_repository import DWMySQLRepository
 from app.repositories.mysql.meta.meta_mysql_repository import MetaMySQLRepository
 
@@ -34,14 +36,49 @@ class MetaKnowledgeService:
         context = OmegaConf.load(config_path)
         schema = OmegaConf.structured(MetaConfig)
         meta_config: MetaConfig = OmegaConf.to_object(OmegaConf.merge(schema, context))
-        logger.info("加载配置文件")
 
         # 2. 根据配置文件判断后续要进入哪条构建链路
         if meta_config.tables:
-            logger.info("检测到 tables 配置，表链路入口已准备就绪")
-            logger.info("表信息与字段信息构建流程后续继续补充")
-            logger.info("字段向量索引与字段值全文索引逻辑后续继续补充")
+            table_infos: list[TableInfo] = []
+            column_infos: list[ColumnInfo] = []
+            for table in meta_config.tables:
+                # table -> table_info
+                table_info = TableInfo(
+                    id=table.name,
+                    name=table.name,
+                    role=table.role,
+                    description=table.description,
+                )
+                table_infos.append(table_info)
 
+            # 查询字段类型
+            column_types = await self.dw_mysql_repository.get_column_types(table.name)
+
+            for column in table.columns:
+                # 查询字段取值示例
+                column_values = await self.dw_mysql_repository.get_column_values(
+                    table.name, column.name
+                )
+                # column -> column_info
+                column_info = ColumnInfo(
+                    id=f"{table.name}.{column.name}",
+                    name=column.name,
+                    type=column_types[column.name],
+                    role=column.role,
+                    examples=column_values,
+                    description=column.description,
+                    alias=column.alias,
+                    table_id=table.name,
+                )
+                column_infos.append(column_info)
+                # self.meta_mysql_repository.add(table_info)
+
+        async with self.meta_mysql_repository.session.begin():
+            self.meta_mysql_repository.save_table_infos(table_infos)
+            self.meta_mysql_repository.save_column_infos(column_infos)
+
+            print(table_infos)
+            print(column_infos)
         # 3. 根据配置文件同步指定的指标信息
         if meta_config.metrics:
             logger.info("检测到 metrics 配置，指标链路入口已准备就绪")
