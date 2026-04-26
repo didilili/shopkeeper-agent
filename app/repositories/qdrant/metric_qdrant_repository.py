@@ -11,10 +11,11 @@ from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
 
 from app.conf.app_config import app_config
+from app.entities.metric_info import MetricInfo
 
 
 class MetricQdrantRepository:
-    """负责指标向量集合的创建和批量写入"""
+    """负责指标向量集合的创建 写入和基础检索"""
 
     collection_name = "metric_info_collection"
 
@@ -50,3 +51,17 @@ class MetricQdrantRepository:
             await self.client.upsert(
                 collection_name=self.collection_name, points=points[i : i + batch_size]
             )
+
+    async def search(
+        self, embedding: list[float], score_threshold: float = 0.6, limit: int = 20
+    ) -> list[MetricInfo]:
+        """按向量相似度检索指标元数据，并还原为 MetricInfo 实体"""
+
+        result = await self.client.query_points(
+            collection_name=self.collection_name,
+            query=embedding,
+            limit=limit,
+            score_threshold=score_threshold,
+        )
+        # Qdrant point 的 payload 中保存的是指标元数据，业务层继续使用 MetricInfo
+        return [MetricInfo(**point.payload) for point in result.points]

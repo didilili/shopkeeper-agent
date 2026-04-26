@@ -9,6 +9,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from dotenv import load_dotenv
 from omegaconf import OmegaConf
 
 
@@ -100,7 +101,11 @@ class AppConfig:
 
 
 # 从当前文件位置回到项目根目录，再定位到 conf/app_config.yaml
-config_file = Path(__file__).parents[2] / "conf" / "app_config.yaml"
+project_root = Path(__file__).parents[2]
+config_file = project_root / "conf" / "app_config.yaml"
+
+# 先读取本地 .env，让 YAML 中的 ${oc.env:...} 可以解析到敏感配置
+load_dotenv(project_root / ".env")
 
 # 读取 YAML 配置内容
 context = OmegaConf.load(config_file)

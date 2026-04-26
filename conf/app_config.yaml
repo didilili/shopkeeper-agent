@@ -39,6 +39,6 @@ es:
   index_name: data_agent
 
 llm:
-  model_name: gpt-5.2-codex
-  api_key: <api_key>
-  base_url: https://api.openai-proxy.org/v1
+  model_name: Pro/zai-org/GLM-5.1
+  api_key: ${oc.env:LLM_API_KEY}
+  base_url: https://api.siliconflow.cn/v1

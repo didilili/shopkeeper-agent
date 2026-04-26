@@ -1,10 +1,10 @@
 """
 字段取值 ES 仓储
 
-把字段真实取值组织成Elasticsearch 全文索引，并提供最小的索引创建与批量写入能力
+把字段真实取值组织成 Elasticsearch 全文索引，并提供索引创建 批量写入和关键词检索能力
 
 Service 层负责决定哪些字段需要同步
-Repository 只关心索引是否存在以及这些 ValueInfo 应该如何写进 ES
+Repository 只关心索引是否存在 ValueInfo 如何写进 ES 以及如何按关键词召回
 """
 
 from dataclasses import asdict
@@ -15,7 +15,7 @@ from app.entities.value_info import ValueInfo
 
 
 class ValueESRepository:
-    """负责字段取值全文索引的创建与批量写入"""
+    """负责字段取值全文索引的创建 写入和基础检索"""
 
     index_name = "value_index"
     # value 字段使用 IK 分词，这样地区 会员等级 品类等中文值才能按全文方式检索
@@ -57,3 +57,19 @@ class ValueESRepository:
                 )
                 batch_operations.append(asdict(value_info))
             await self.client.bulk(operations=batch_operations)
+
+    async def search(
+        self, keyword: str, score_threshold: float = 0.6, limit: int = 20
+    ) -> list[ValueInfo]:
+        """按关键词全文检索字段取值，并还原为 ValueInfo 实体"""
+
+        resp = await self.client.search(
+            index=self.index_name,
+            # value 字段启用了 IK 分词，match 查询可以处理中文短语和枚举值匹配
+            query={"match": {"value": keyword}},
+            size=limit,
+            # 过滤掉相关度过低的命中，避免把明显无关的取值带入后续上下文
+            min_score=score_threshold,
+        )
+        # ES 文档 _source 中保存的是 ValueInfo 的字段结构，业务层继续使用实体对象
+        return [ValueInfo(**hit["_source"]) for hit in resp["hits"]["hits"]]

@@ -18,6 +18,7 @@ dependencies = [
     "langgraph>=1.1.6",
     "loguru>=0.7.3",
     "omegaconf>=2.3.0",
+    "python-dotenv>=1.2.2",
     "pyyaml>=6.0.3",
     "qdrant-client>=1.17.1",
     "sqlalchemy>=2.0.49",
