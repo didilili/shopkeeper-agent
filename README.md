@@ -1,5 +1,5 @@
 <div align='center'>
-  <h1 style="margin-top: 15px;">「掌柜问数」智能数据分析 Agent</h1>
+  <h1 style="margin-top: 15px;">「电商问数」智能数据分析 Agent</h1>
   <h4><b>shopkeeper-agent</b></h4>
   <p><em>一套真正能落地的企业级智能问数 Agent，配套系统性文字教程与对应章节分支，带你打通混合检索、多阶段推理、SQL 生成与执行全链路</em></p>
 </div>
@@ -22,7 +22,7 @@
 
 它不仅是一个“SQL 生成工具”，更接近一个会思考、会检索、会校验、会逐步推理的虚拟数据分析师。
 
-> 本套仓库是 [ai-agents-from-zero](https://github.com/didilili/ai-agents-from-zero) 教程体系中的 [实战项目-掌柜问数](https://github.com/didilili/ai-agents-from-zero/tree/main/%E5%AE%9E%E6%88%98%E9%A1%B9%E7%9B%AE-%E6%8E%8C%E6%9F%9C%E9%97%AE%E6%95%B0) 配套源码仓库，除了可直接运行和二次开发的项目代码之外，也提供了与教程章节对应的 Git 分支演进过程，以及完整的在线图文讲义入口。
+> 本套仓库是 [ai-agents-from-zero](https://github.com/didilili/ai-agents-from-zero) 教程体系中的 [实战项目-电商问数](https://github.com/didilili/ai-agents-from-zero/tree/main/%E5%AE%9E%E6%88%98%E9%A1%B9%E7%9B%AE-%E6%8E%8C%E6%9F%9C%E9%97%AE%E6%95%B0) 配套源码仓库，除了可直接运行和二次开发的项目代码之外，也提供了与教程章节对应的 Git 分支演进过程，以及完整的在线图文讲义入口。
 > 配套教程覆盖项目定位、技术架构、Agent 工作流与工程实践，适合结合章节分支一边阅读一边对照源码学习。
 > 如果你想系统学习「AI智能体 大模型应用开发」，也可直接从系统教程 [AI 智能体实战速成指南-大模型入门](https://didilili.github.io/ai-agents-from-zero/#/) 开始。
 
@@ -34,7 +34,7 @@
 - 数据分析同学很难在短时间内摸清所有表结构和字段口径
 - 单纯把问题直接丢给大模型，又容易出现字段选错、指标理解错、SQL 幻觉等问题
 
-`掌柜问数` 要解决的就是这个问题：
+`电商问数` 要解决的就是这个问题：
 
 - 用户用自然语言提问
 - 系统自动召回相关字段、指标和字段取值
@@ -72,7 +72,7 @@
 
 ## 📚 配套教程目录
 
-教程总入口：[掌柜问数完整教程](https://didilili.github.io/ai-agents-from-zero/#/%E5%AE%9E%E6%88%98%E9%A1%B9%E7%9B%AE-%E6%8E%8C%E6%9F%9C%E9%97%AE%E6%95%B0/0-%E5%89%8D%E8%A8%80)
+教程总入口：[电商问数完整教程](https://didilili.github.io/ai-agents-from-zero/#/%E5%AE%9E%E6%88%98%E9%A1%B9%E7%9B%AE-%E6%8E%8C%E6%9F%9C%E9%97%AE%E6%95%B0/0-%E5%89%8D%E8%A8%80)
 
 下表把在线讲义、教程章节和本仓库的分支演进放到了一起，方便你一边看教程一边切换代码
 
@@ -89,7 +89,8 @@
 | 8    | [表与字段信息同步到元数据库](https://didilili.github.io/ai-agents-from-zero/#/%E5%AE%9E%E6%88%98%E9%A1%B9%E7%9B%AE-%E6%8E%8C%E6%9F%9C%E9%97%AE%E6%95%B0/8-%E8%A1%A8%E4%B8%8E%E5%AD%97%E6%AE%B5%E4%BF%A1%E6%81%AF%E5%90%8C%E6%AD%A5%E5%88%B0%E5%85%83%E6%95%B0%E6%8D%AE%E5%BA%93)  | 聚焦 `Service + Repository + Mapper + ORM` 如何配合完成表字段元数据入库                         | `08-metadata-table-column-sync`    |
 | 9    | [字段与指标检索能力构建](https://didilili.github.io/ai-agents-from-zero/#/%E5%AE%9E%E6%88%98%E9%A1%B9%E7%9B%AE-%E6%8E%8C%E6%9F%9C%E9%97%AE%E6%95%B0/9-%E5%AD%97%E6%AE%B5%E4%B8%8E%E6%8C%87%E6%A0%87%E6%A3%80%E7%B4%A2%E8%83%BD%E5%8A%9B%E6%9E%84%E5%BB%BA)                        | 构建字段向量索引、字段值全文索引和指标向量索引，补齐字段与指标的混合检索能力                    | `09-metadata-retrieval-capability` |
 | 10   | [问数智能体总览与工作流骨架](https://didilili.github.io/ai-agents-from-zero/#/%E5%AE%9E%E6%88%98%E9%A1%B9%E7%9B%AE-%E6%8E%8C%E6%9F%9C%E9%97%AE%E6%95%B0/10-%E9%97%AE%E6%95%B0%E6%99%BA%E8%83%BD%E4%BD%93%E6%80%BB%E8%A7%88%E4%B8%8E%E5%B7%A5%E4%BD%9C%E6%B5%81%E9%AA%A8%E6%9E%B6) | 搭建问数智能体的 LangGraph 工作流骨架，串联检索、过滤、SQL 生成、校验和执行节点                 | `10-agent-workflow-skeleton`       |
-| 11   | [关键词抽取与多路召回](https://didilili.github.io/ai-agents-from-zero/#/%E5%AE%9E%E6%88%98%E9%A1%B9%E7%9B%AE-%E6%8E%8C%E6%9F%9C%E9%97%AE%E6%95%B0/11-%E5%85%B3%E9%94%AE%E8%AF%8D%E6%8A%BD%E5%8F%96%E4%B8%8E%E5%A4%9A%E8%B7%AF%E5%8F%AC%E5%9B%9E)                                | 实现关键词抽取，并并行召回字段信息、指标信息和字段真实取值                                      | `11-agent-keyword-multi-recall`    |
+| 11   | [关键词抽取与多路召回](https://didilili.github.io/ai-agents-from-zero/#/%E5%AE%9E%E6%88%98%E9%A1%B9%E7%9B%AE-%E6%8E%8C%E6%9F%9C%E9%97%AE%E6%95%B0/11-%E5%85%B3%E9%94%AE%E8%AF%8D%E6%8A%BD%E5%8F%96%E4%B8%8E%E5%A4%9A%E8%B7%AF%E5%8F%AC%E5%9B%9E)                                  | 实现关键词抽取，并并行召回字段信息、指标信息和字段真实取值                                      | `11-agent-keyword-multi-recall`    |
+| 12   | [召回信息合并与上下文构建](https://didilili.github.io/ai-agents-from-zero/#/%E5%AE%9E%E6%88%98%E9%A1%B9%E7%9B%AE-%E6%8E%8C%E6%9F%9C%E9%97%AE%E6%95%B0/12-%E5%8F%AC%E5%9B%9E%E4%BF%A1%E6%81%AF%E5%90%88%E5%B9%B6%E4%B8%8E%E4%B8%8A%E4%B8%8B%E6%96%87%E6%9E%84%E5%BB%BA)            | 合并字段、指标和字段取值召回结果，补齐依赖字段、真实取值和主外键上下文                          | `12-agent-merge-retrievals`        |
 
 ## 🎯 你能学到什么
 
