@@ -93,6 +93,7 @@
 | 12   | [召回信息合并与上下文构建](https://didilili.github.io/ai-agents-from-zero/#/%E5%AE%9E%E6%88%98%E9%A1%B9%E7%9B%AE-%E7%94%B5%E5%95%86%E9%97%AE%E6%95%B0/12-%E5%8F%AC%E5%9B%9E%E4%BF%A1%E6%81%AF%E5%90%88%E5%B9%B6%E4%B8%8E%E4%B8%8A%E4%B8%8B%E6%96%87%E6%9E%84%E5%BB%BA)            | 合并字段、指标和字段取值召回结果，补齐依赖字段、真实取值和主外键上下文                          | `12-agent-merge-retrievals`        |
 | 13   | [SQL生成前的信息过滤与补全](https://didilili.github.io/ai-agents-from-zero/#/%E5%AE%9E%E6%88%98%E9%A1%B9%E7%9B%AE-%E7%94%B5%E5%95%86%E9%97%AE%E6%95%B0/13-SQL%E7%94%9F%E6%88%90%E5%89%8D%E7%9A%84%E4%BF%A1%E6%81%AF%E8%BF%87%E6%BB%A4%E4%B8%8E%E8%A1%A5%E5%85%A8)                 | 过滤候选表字段和指标上下文，并补齐日期、数据库方言和版本等 SQL 生成前置环境信息                 | `13-agent-filter-extra-context`    |
 | 14   | [SQL生成与执行闭环](https://didilili.github.io/ai-agents-from-zero/#/%E5%AE%9E%E6%88%98%E9%A1%B9%E7%9B%AE-%E7%94%B5%E5%95%86%E9%97%AE%E6%95%B0/14-SQL%E7%94%9F%E6%88%90%E4%B8%8E%E6%89%A7%E8%A1%8C%E9%97%AD%E7%8E%AF)                                                             | 实现 SQL 生成、EXPLAIN 校验、错误校正和最终执行，跑通自然语言问数到查询结果的闭环               | `14-agent-sql-loop`                |
+| 15   | [API接口基础与FastAPI入门](https://didilili.github.io/ai-agents-from-zero/#/%E5%AE%9E%E6%88%98%E9%A1%B9%E7%9B%AE-%E7%94%B5%E5%95%86%E9%97%AE%E6%95%B0/15-API%E6%8E%A5%E5%8F%A3%E5%9F%BA%E7%A1%80%E4%B8%8EFastAPI%E5%85%A5%E9%97%A8)                                            | 搭建最小 `/api/query` 接口，理解流式响应、SSE 协议和 FastAPI 工程基础                           | `15-api-streaming-basics`          |
 
 ## 🎯 你能学到什么
 
