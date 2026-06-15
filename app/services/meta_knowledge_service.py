@@ -52,26 +52,26 @@ class MetaKnowledgeService:
                 )
                 table_infos.append(table_info)
 
-            # 查询字段类型
-            column_types = await self.dw_mysql_repository.get_column_types(table.name)
+                # 查询字段类型
+                column_types = await self.dw_mysql_repository.get_column_types(table.name)
 
-            for column in table.columns:
-                # 查询字段取值示例
-                column_values = await self.dw_mysql_repository.get_column_values(
-                    table.name, column.name
-                )
-                # column -> column_info
-                column_info = ColumnInfo(
-                    id=f"{table.name}.{column.name}",
-                    name=column.name,
-                    type=column_types[column.name],
-                    role=column.role,
-                    examples=column_values,
-                    description=column.description,
-                    alias=column.alias,
-                    table_id=table.name,
-                )
-                column_infos.append(column_info)
+                for column in table.columns:
+                    # 查询字段取值示例
+                    column_values = await self.dw_mysql_repository.get_column_values(
+                        table.name, column.name
+                    )
+                    # column -> column_info
+                    column_info = ColumnInfo(
+                        id=f"{table.name}.{column.name}",
+                        name=column.name,
+                        type=column_types[column.name],
+                        role=column.role,
+                        examples=column_values,
+                        description=column.description,
+                        alias=column.alias,
+                        table_id=table.name,
+                    )
+                    column_infos.append(column_info)
 
         # 保存表信息和字段信息到元数据数据库
         async with self.meta_mysql_repository.session.begin():
