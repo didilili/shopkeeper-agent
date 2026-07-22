@@ -103,6 +103,21 @@ class ESConfig(FrozenConfigModel):
         return self
 
 
+class RetrievalDomainConfig(FrozenConfigModel):
+    score_threshold: float = Field(ge=0)
+    per_query_limit: int = Field(gt=0, le=100)
+    final_limit: int = Field(gt=0, le=100)
+    rrf_k: int = Field(gt=0)
+    exact_match_boost: float = Field(ge=0)
+
+
+class RetrievalConfig(FrozenConfigModel):
+    max_concurrency: int = Field(gt=0, le=50)
+    column: RetrievalDomainConfig
+    metric: RetrievalDomainConfig
+    value: RetrievalDomainConfig
+
+
 class AppConfig(FrozenConfigModel):
     runtime: RuntimeConfig
     logging: LoggingConfig
@@ -111,6 +126,7 @@ class AppConfig(FrozenConfigModel):
     qdrant: QdrantConfig
     embedding: EmbeddingConfig
     es: ESConfig
+    retrieval: RetrievalConfig
 
     @model_validator(mode="after")
     def validate_environment_policy(self) -> Self:

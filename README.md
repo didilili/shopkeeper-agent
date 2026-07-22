@@ -107,6 +107,7 @@ shopkeeper-agent/
 │   ├── llm/              # 模型注册表、工厂和协议适配器
 │   ├── models/           # SQLAlchemy ORM 模型
 │   ├── prompt/           # Prompt 注册表、工厂、输出协议和候选校验
+│   ├── retrieval/        # 并发召回、候选去重与 RRF 重排序
 │   ├── repositories/     # MySQL、Qdrant、Elasticsearch 数据访问层
 │   ├── scripts/          # 元数据知识库构建脚本
 │   └── services/         # 元数据构建服务和问数查询服务
@@ -202,6 +203,12 @@ deployments:
 应用配置和模型注册表都使用 Pydantic 强校验，密码和 API Key 使用
 `SecretStr` 脱敏。生产部署设置 `APP_ENV=production`，并由部署平台注入
 数据库密码和模型密钥；配置错误时程序会在建立外部连接前终止启动。
+
+字段、指标和值域召回参数统一位于 `conf/app_config.yaml` 的 `retrieval`
+配置段，可通过环境变量覆盖。召回层会稳定去重查询词、批量生成向量、
+并发访问检索仓储，再使用 RRF 融合多路结果；底层相似度分数与命中词会
+保留在排序过程和日志中。设计与调参说明见
+[`docs/召回与重排序模块说明.md`](docs/召回与重排序模块说明.md)。
 
 ### 5. 准备 Embedding 模型
 

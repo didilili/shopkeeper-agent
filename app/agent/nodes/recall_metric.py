@@ -10,9 +10,11 @@ from langgraph.runtime import Runtime
 
 from app.agent.context import DataAgentContext
 from app.agent.state import DataAgentState
+from app.conf.app_config import app_config
 from app.core.log import logger
 from app.entities.metric_info import MetricInfo
 from app.prompt.factory import build_prompt_chain
+from app.retrieval.service import retrieve_vector_candidates
 
 
 async def recall_metric(state: DataAgentState, runtime: Runtime[DataAgentContext]):
@@ -35,24 +37,29 @@ async def recall_metric(state: DataAgentState, runtime: Runtime[DataAgentContext
 
         result = await chain.ainvoke({"query": query})
 
-        # 通用关键词和指标扩展词都参与召回，提升同义指标的命中率
-        keywords = set(keywords + result)
-
-        # 用指标 id 做唯一键，避免多个关键词命中同一个指标时重复写入 state
-        metric_info_map: dict[str, MetricInfo] = {}
-        for keyword in keywords:
-            # 指标库是向量集合，查询词必须先 Embedding 成 query vector
-            embedding = await embedding_client.aembed_query(keyword)
-            current_metric_infos: list[
-                MetricInfo
-            ] = await metric_qdrant_repository.search(embedding)
-            for metric_info in current_metric_infos:
-                if metric_info.id not in metric_info_map:
-                    metric_info_map[metric_info.id] = metric_info
-
-        # 写回 state 的是业务实体列表，后续过滤节点不需要关心 Qdrant 原始 point 结构
-        retrieved_metric_infos: list[MetricInfo] = list(metric_info_map.values())
-        logger.info(f"检索到指标信息：{list(metric_info_map.keys())}")
+        ranked_candidates = await retrieve_vector_candidates(
+            [*keywords, *result],
+            embedding_client=embedding_client,
+            search=metric_qdrant_repository.search,
+            config=app_config.retrieval.metric,
+            max_concurrency=app_config.retrieval.max_concurrency,
+            key=lambda item: item.id,
+            searchable_terms=lambda item: [item.name, *item.alias],
+        )
+        retrieved_metric_infos: list[MetricInfo] = [
+            candidate.item for candidate in ranked_candidates
+        ]
+        logger.info(
+            "指标融合排序：{}",
+            [
+                {
+                    "id": candidate.item.id,
+                    "score": round(candidate.score, 4),
+                    "queries": candidate.matched_queries,
+                }
+                for candidate in ranked_candidates
+            ],
+        )
         writer({"type": "progress", "step": step, "status": "success"})
         return {"retrieved_metric_infos": retrieved_metric_infos}
     except Exception as e:

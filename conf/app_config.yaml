@@ -58,3 +58,24 @@ es:
   username: ${oc.env:ES_USERNAME,''}
   password: ${oc.env:ES_PASSWORD,''}
   request_timeout: ${oc.env:ES_REQUEST_TIMEOUT,30}
+
+retrieval:
+  max_concurrency: ${oc.env:RETRIEVAL_MAX_CONCURRENCY,8}
+  column:
+    score_threshold: ${oc.env:COLUMN_RETRIEVAL_SCORE_THRESHOLD,0.6}
+    per_query_limit: ${oc.env:COLUMN_RETRIEVAL_PER_QUERY_LIMIT,20}
+    final_limit: ${oc.env:COLUMN_RETRIEVAL_FINAL_LIMIT,20}
+    rrf_k: ${oc.env:COLUMN_RETRIEVAL_RRF_K,60}
+    exact_match_boost: ${oc.env:COLUMN_RETRIEVAL_EXACT_BOOST,0.05}
+  metric:
+    score_threshold: ${oc.env:METRIC_RETRIEVAL_SCORE_THRESHOLD,0.6}
+    per_query_limit: ${oc.env:METRIC_RETRIEVAL_PER_QUERY_LIMIT,20}
+    final_limit: ${oc.env:METRIC_RETRIEVAL_FINAL_LIMIT,10}
+    rrf_k: ${oc.env:METRIC_RETRIEVAL_RRF_K,60}
+    exact_match_boost: ${oc.env:METRIC_RETRIEVAL_EXACT_BOOST,0.05}
+  value:
+    score_threshold: ${oc.env:VALUE_RETRIEVAL_SCORE_THRESHOLD,0.6}
+    per_query_limit: ${oc.env:VALUE_RETRIEVAL_PER_QUERY_LIMIT,20}
+    final_limit: ${oc.env:VALUE_RETRIEVAL_FINAL_LIMIT,20}
+    rrf_k: ${oc.env:VALUE_RETRIEVAL_RRF_K,60}
+    exact_match_boost: ${oc.env:VALUE_RETRIEVAL_EXACT_BOOST,0.05}

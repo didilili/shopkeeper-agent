@@ -10,9 +10,11 @@ from langgraph.runtime import Runtime
 
 from app.agent.context import DataAgentContext
 from app.agent.state import DataAgentState
+from app.conf.app_config import app_config
 from app.core.log import logger
 from app.entities.column_info import ColumnInfo
 from app.prompt.factory import build_prompt_chain
+from app.retrieval.service import retrieve_vector_candidates
 
 
 async def recall_column(state: DataAgentState, runtime: Runtime[DataAgentContext]):
@@ -35,23 +37,29 @@ async def recall_column(state: DataAgentState, runtime: Runtime[DataAgentContext
 
         result = await chain.ainvoke({"query": query})
 
-        # 原始关键词和 LLM 扩展词一起参与召回；set 去重，避免重复请求同一关键词
-        keywords = set(keywords + result)
-
-        # 用字段 id 做唯一键，因为多个关键词、同一字段的多个向量点都可能命中同一个字段
-        column_info_map: dict[str, ColumnInfo] = {}
-        for keyword in keywords:
-            # 查询词必须先转成向量，才能和第 9 章写入 Qdrant 的字段向量做相似度检索
-            embedding = await embedding_client.aembed_query(keyword)
-            current_column_infos: list[
-                ColumnInfo
-            ] = await column_qdrant_repository.search(embedding)
-            for column_info in current_column_infos:
-                if column_info.id not in column_info_map:
-                    column_info_map[column_info.id] = column_info
-
-        # 写回 state 的是去重后的 ColumnInfo 列表，不暴露 Qdrant 原始 point 结构
-        retrieved_column_infos: list[ColumnInfo] = list(column_info_map.values())
+        ranked_candidates = await retrieve_vector_candidates(
+            [*keywords, *result],
+            embedding_client=embedding_client,
+            search=column_qdrant_repository.search,
+            config=app_config.retrieval.column,
+            max_concurrency=app_config.retrieval.max_concurrency,
+            key=lambda item: item.id,
+            searchable_terms=lambda item: [item.name, *item.alias],
+        )
+        retrieved_column_infos: list[ColumnInfo] = [
+            candidate.item for candidate in ranked_candidates
+        ]
+        logger.info(
+            "字段融合排序：{}",
+            [
+                {
+                    "id": candidate.item.id,
+                    "score": round(candidate.score, 4),
+                    "queries": candidate.matched_queries,
+                }
+                for candidate in ranked_candidates
+            ],
+        )
 
         writer({"type": "progress", "step": step, "status": "success"})
         return {"retrieved_column_infos": retrieved_column_infos}

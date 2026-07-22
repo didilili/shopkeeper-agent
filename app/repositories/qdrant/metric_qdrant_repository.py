@@ -12,6 +12,7 @@ from qdrant_client.models import Distance, PointStruct, VectorParams
 
 from app.conf.app_config import app_config
 from app.entities.metric_info import MetricInfo
+from app.retrieval.schemas import SearchHit
 
 
 class MetricQdrantRepository:
@@ -54,8 +55,8 @@ class MetricQdrantRepository:
 
     async def search(
         self, embedding: list[float], score_threshold: float = 0.6, limit: int = 20
-    ) -> list[MetricInfo]:
-        """按向量相似度检索指标元数据，并还原为 MetricInfo 实体"""
+    ) -> list[SearchHit[MetricInfo]]:
+        """按向量相似度检索指标元数据，并保留底层相似度分数。"""
 
         result = await self.client.query_points(
             collection_name=self.collection_name,
@@ -63,5 +64,10 @@ class MetricQdrantRepository:
             limit=limit,
             score_threshold=score_threshold,
         )
-        # Qdrant point 的 payload 中保存的是指标元数据，业务层继续使用 MetricInfo
-        return [MetricInfo(**point.payload) for point in result.points]
+        return [
+            SearchHit(
+                item=MetricInfo(**(point.payload or {})),
+                score=float(point.score),
+            )
+            for point in result.points
+        ]

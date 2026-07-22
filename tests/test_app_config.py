@@ -11,6 +11,8 @@ def test_test_environment_uses_isolated_databases() -> None:
     assert config.runtime.environment == "test"
     assert config.db_meta.database == "meta_test"
     assert config.db_dw.database == "dw_test"
+    assert config.retrieval.column.final_limit == 20
+    assert config.retrieval.metric.final_limit == 10
 
 
 def test_secret_values_are_masked() -> None:

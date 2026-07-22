@@ -10,9 +10,11 @@ from langgraph.runtime import Runtime
 
 from app.agent.context import DataAgentContext
 from app.agent.state import DataAgentState
+from app.conf.app_config import app_config
 from app.core.log import logger
 from app.entities.value_info import ValueInfo
 from app.prompt.factory import build_prompt_chain
+from app.retrieval.service import retrieve_text_candidates
 
 
 async def recall_value(state: DataAgentState, runtime: Runtime[DataAgentContext]):
@@ -35,22 +37,28 @@ async def recall_value(state: DataAgentState, runtime: Runtime[DataAgentContext]
 
         result = await chain.ainvoke({"query": query})
 
-        # 通用关键词和字段值扩展词一起检索 ES，尽量提高真实取值召回率
-        keywords = set(keywords + result)
-
-        # 用 ValueInfo.id 去重，避免多个关键词命中同一条字段值记录
-        value_infos_map: dict[str, ValueInfo] = {}
-        for keyword in keywords:
-            current_value_infos: list[ValueInfo] = await value_es_repository.search(
-                keyword
-            )
-            for current_value_info in current_value_infos:
-                if current_value_info.id not in value_infos_map:
-                    value_infos_map[current_value_info.id] = current_value_info
-
-        # 写回 state 的是去重后的字段值实体，后续合并节点再决定如何组织上下文
-        retrieved_value_infos: list[ValueInfo] = list(value_infos_map.values())
-        logger.info(f"检索到字段取值：{list(value_infos_map.keys())}")
+        ranked_candidates = await retrieve_text_candidates(
+            [*keywords, *result],
+            search=value_es_repository.search,
+            config=app_config.retrieval.value,
+            max_concurrency=app_config.retrieval.max_concurrency,
+            key=lambda item: item.id,
+            searchable_terms=lambda item: [item.value],
+        )
+        retrieved_value_infos: list[ValueInfo] = [
+            candidate.item for candidate in ranked_candidates
+        ]
+        logger.info(
+            "字段值融合排序：{}",
+            [
+                {
+                    "id": candidate.item.id,
+                    "score": round(candidate.score, 4),
+                    "queries": candidate.matched_queries,
+                }
+                for candidate in ranked_candidates
+            ],
+        )
         writer({"type": "progress", "step": step, "status": "success"})
         return {"retrieved_value_infos": retrieved_value_infos}
     except Exception as e:

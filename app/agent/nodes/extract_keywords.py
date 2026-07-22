@@ -43,8 +43,8 @@ async def extract_keywords(state: DataAgentState, runtime: Runtime[DataAgentCont
         keywords = jieba.analyse.extract_tags(query, allowPOS=allow_pos)
 
         # 保留原始问题作为兜底检索入口，避免关键词切分不准时丢掉完整语义
-        # set 用来去重；顺序不参与后续判断，所以这里不依赖关键词顺序
-        keywords = list(set(keywords + [query]))
+        # 保留首次出现顺序，后续融合排序可以稳定复现同一查询的结果
+        keywords = list(dict.fromkeys([*keywords, query]))
 
         writer({"type": "progress", "step": step, "status": "success"})
         logger.info(f"抽取关键词成功: {keywords}")

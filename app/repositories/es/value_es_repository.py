@@ -12,6 +12,7 @@ from dataclasses import asdict
 from elasticsearch import AsyncElasticsearch
 
 from app.entities.value_info import ValueInfo
+from app.retrieval.schemas import SearchHit
 
 
 class ValueESRepository:
@@ -60,8 +61,8 @@ class ValueESRepository:
 
     async def search(
         self, keyword: str, score_threshold: float = 0.6, limit: int = 20
-    ) -> list[ValueInfo]:
-        """按关键词全文检索字段取值，并还原为 ValueInfo 实体"""
+    ) -> list[SearchHit[ValueInfo]]:
+        """按关键词全文检索字段取值，并保留 Elasticsearch 分数。"""
 
         resp = await self.client.search(
             index=self.index_name,
@@ -71,5 +72,10 @@ class ValueESRepository:
             # 过滤掉相关度过低的命中，避免把明显无关的取值带入后续上下文
             min_score=score_threshold,
         )
-        # ES 文档 _source 中保存的是 ValueInfo 的字段结构，业务层继续使用实体对象
-        return [ValueInfo(**hit["_source"]) for hit in resp["hits"]["hits"]]
+        return [
+            SearchHit(
+                item=ValueInfo(**hit["_source"]),
+                score=float(hit.get("_score") or 0),
+            )
+            for hit in resp["hits"]["hits"]
+        ]

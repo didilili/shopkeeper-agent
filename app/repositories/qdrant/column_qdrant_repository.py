@@ -13,6 +13,7 @@ from qdrant_client.models import Distance, VectorParams
 
 from app.conf.app_config import app_config
 from app.entities.column_info import ColumnInfo
+from app.retrieval.schemas import SearchHit
 
 
 class ColumnQdrantRepository:
@@ -52,13 +53,18 @@ class ColumnQdrantRepository:
 
     async def search(
         self, embedding: list[float], score_threshold: float = 0.6, limit: int = 20
-    ) -> list[ColumnInfo]:
-        """按向量相似度检索字段元数据，并还原为 ColumnInfo 实体"""
+    ) -> list[SearchHit[ColumnInfo]]:
+        """按向量相似度检索字段元数据，并保留底层相似度分数。"""
         result = await self.client.query_points(
             collection_name=self.collection_name,
             query=embedding,
             limit=limit,
             score_threshold=score_threshold,
         )
-        # Qdrant 只保存字段元数据 payload，业务层继续使用 ColumnInfo
-        return [ColumnInfo(**point.payload) for point in result.points]
+        return [
+            SearchHit(
+                item=ColumnInfo(**(point.payload or {})),
+                score=float(point.score),
+            )
+            for point in result.points
+        ]
