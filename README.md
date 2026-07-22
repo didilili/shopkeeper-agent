@@ -137,6 +137,15 @@ uv run python -m app.scripts.evaluate_prompts --mode offline
 uv run python -m app.scripts.evaluate_prompts --mode live
 ```
 
+召回评测集可以先离线校验结构；基础服务和元数据知识库准备完成后，再运行
+真实的 Recall@K、MRR@K 与 nDCG@K 评测：
+
+```bash
+uv run python -m app.scripts.evaluate_retrieval --mode validate
+uv run python -m app.scripts.evaluate_retrieval --mode live \
+  --output reports/retrieval-live.json
+```
+
 ### 1. 准备环境
 
 - Python `>= 3.14`

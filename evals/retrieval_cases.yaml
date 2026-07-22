@@ -1,0 +1,89 @@
+version: 1
+k_values: [1, 3, 5, 10]
+
+quality_gates:
+  - {domain: overall, metric: recall, k: 5, minimum: 0.80}
+  - {domain: overall, metric: mrr, k: 10, minimum: 0.70}
+  - {domain: overall, metric: ndcg, k: 10, minimum: 0.75}
+  - {domain: column, metric: recall, k: 5, minimum: 0.80}
+  - {domain: metric, metric: recall, k: 3, minimum: 0.90}
+  - {domain: value, metric: recall, k: 5, minimum: 0.80}
+
+cases:
+  - id: column_product_category
+    domain: column
+    description: 商品分类表达应召回商品品类字段
+    queries: [商品类型]
+    relevant_ids: [dim_product.category]
+
+  - id: column_member_level
+    domain: column
+    description: 用户等级表达应召回会员等级字段
+    queries: [客户层级]
+    relevant_ids: [dim_customer.member_level]
+
+  - id: column_order_amount
+    domain: column
+    description: 销售金额表达应召回订单金额字段
+    queries: [成交金额]
+    relevant_ids: [fact_order.order_amount]
+
+  - id: column_order_quantity
+    domain: column
+    description: 商品销量表达应召回购买数量字段
+    queries: [售出件数]
+    relevant_ids: [fact_order.order_quantity]
+
+  - id: column_region_name
+    domain: column
+    description: 大区表达应召回地区名称字段
+    queries: [销售区域]
+    relevant_ids: [dim_region.region_name]
+
+  - id: column_date_quarter
+    domain: column
+    description: 季度分析应召回季度字段
+    queries: [财务季度]
+    relevant_ids: [dim_date.quarter]
+
+  - id: metric_gmv
+    domain: metric
+    description: 成交总额应召回 GMV 指标
+    queries: [商品交易总额]
+    relevant_ids: [GMV]
+
+  - id: metric_aov
+    domain: metric
+    description: 平均订单金额应召回 AOV 指标
+    queries: [客单价]
+    relevant_ids: [AOV]
+
+  - id: value_region_east
+    domain: value
+    description: 华东应命中大区字段的真实值
+    queries: [华东]
+    relevant_ids: [dim_region.region_name.华东]
+
+  - id: value_brand_huawei
+    domain: value
+    description: 华为应命中品牌字段的真实值
+    queries: [华为]
+    relevant_ids: [dim_product.brand.华为]
+
+  - id: value_member_gold
+    domain: value
+    description: 黄金会员应命中会员等级真实值
+    queries: [黄金]
+    relevant_ids: [dim_customer.member_level.黄金]
+
+  - id: value_category_digital
+    domain: value
+    description: 手机数码应命中商品品类真实值
+    queries: [手机数码]
+    relevant_ids: [dim_product.category.手机数码]
+
+  - id: value_province_guangdong
+    domain: value
+    description: 广东省应命中省份字段真实值
+    queries: [广东省]
+    relevant_ids: [dim_region.province.广东省]
