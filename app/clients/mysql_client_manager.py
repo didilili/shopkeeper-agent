@@ -8,6 +8,7 @@ MySQL 客户端管理器
 """
 
 import asyncio
+from urllib.parse import quote_plus
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
@@ -35,13 +36,23 @@ class MySQLClientManager:
         拼接 MySQL 异步连接地址
         mysql+asyncmy 表示：连接 MySQL，并使用 asyncmy 作为异步驱动
         """
-        return f"mysql+asyncmy://{self.config.user}:{self.config.password}@{self.config.host}:{self.config.port}/{self.config.database}?charset=utf8mb4"
+        user = quote_plus(self.config.user)
+        password = quote_plus(self.config.password.get_secret_value())
+        return (
+            f"mysql+asyncmy://{user}:{password}@{self.config.host}:"
+            f"{self.config.port}/{self.config.database}?charset=utf8mb4"
+        )
 
     def init(self):
         """初始化 Engine 和 Session 工厂"""
         # 创建异步 Engine，相当于先把“数据库连接能力”准备好
         self.engine = create_async_engine(
-            self._get_url(), pool_size=10, pool_pre_ping=True
+            self._get_url(),
+            pool_size=self.config.pool_size,
+            max_overflow=self.config.max_overflow,
+            pool_recycle=self.config.pool_recycle,
+            pool_pre_ping=True,
+            connect_args={"connect_timeout": self.config.connect_timeout},
         )
         # 基于 Engine 创建 Session 工厂，后面真正查库时再拿 session
         self.session_factory = async_sessionmaker(

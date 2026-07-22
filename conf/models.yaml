@@ -1,0 +1,29 @@
+version: 1
+default_profile: sql_agent
+
+defaults:
+  temperature: 0
+  timeout: 60
+  max_retries: 2
+  max_tokens: null
+  extra_kwargs: {}
+
+profiles:
+  sql_agent:
+    deployment: siliconflow_glm
+    description: 电商问数流程使用的稳定模型角色
+
+deployments:
+  siliconflow_glm:
+    adapter: openai_compatible
+    provider: siliconflow
+    model: Pro/zai-org/GLM-5.1
+    base_url: https://api.siliconflow.cn/v1
+    credentials:
+      api_key:
+        env: LLM_API_KEY
+        required: true
+    description: 硅基流动 OpenAI 兼容模型部署
+    tags:
+      - primary
+      - sql

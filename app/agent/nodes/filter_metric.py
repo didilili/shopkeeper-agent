@@ -6,15 +6,13 @@
 """
 
 import yaml
-from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.prompts import PromptTemplate
 from langgraph.runtime import Runtime
 
 from app.agent.context import DataAgentContext
-from app.agent.llm import llm
 from app.agent.state import DataAgentState, MetricInfoState
 from app.core.log import logger
-from app.prompt.prompt_loader import load_prompt
+from app.prompt.factory import build_prompt_chain
+from app.prompt.validators import validate_name_selection
 
 
 async def filter_metric(state: DataAgentState, runtime: Runtime[DataAgentContext]):
@@ -29,14 +27,7 @@ async def filter_metric(state: DataAgentState, runtime: Runtime[DataAgentContext
         metric_infos: list[MetricInfoState] = state["metric_infos"]
 
         # metric_infos 转成 YAML 后作为候选项交给模型，模型只需要返回被选中的指标名称
-        prompt = PromptTemplate(
-            template=load_prompt("filter_metric_info"),
-            input_variables=["query", "metric_infos"],
-        )
-        # filter_metric_info prompt 要求模型只输出 JSON 数组
-        output_parser = JsonOutputParser()
-        # LCEL 管道：填充提示词 -> 调用模型 -> 解析 JSON
-        chain = prompt | llm | output_parser
+        chain = build_prompt_chain("filter_metric_info")
 
         result = await chain.ainvoke(
             {
@@ -46,6 +37,7 @@ async def filter_metric(state: DataAgentState, runtime: Runtime[DataAgentContext
                 ),
             }
         )
+        validate_name_selection(result, metric_infos, label="指标")
         # 用模型返回的指标名称过滤原始结构，保留描述 依赖字段 别名等完整上下文
         filtered_metric_infos = [
             metric_info for metric_info in metric_infos if metric_info["name"] in result

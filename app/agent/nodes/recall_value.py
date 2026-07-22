@@ -6,16 +6,13 @@
 实现路径和字段/指标召回不同：关键词扩展 -> Elasticsearch 全文检索 -> ValueInfo 去重
 """
 
-from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.prompts import PromptTemplate
 from langgraph.runtime import Runtime
 
 from app.agent.context import DataAgentContext
-from app.agent.llm import llm
 from app.agent.state import DataAgentState
 from app.core.log import logger
 from app.entities.value_info import ValueInfo
-from app.prompt.prompt_loader import load_prompt
+from app.prompt.factory import build_prompt_chain
 
 
 async def recall_value(state: DataAgentState, runtime: Runtime[DataAgentContext]):
@@ -34,14 +31,7 @@ async def recall_value(state: DataAgentState, runtime: Runtime[DataAgentContext]
 
         # 用 LLM 把用户问法扩展成“可能出现在字段值里的词”
         # 例如“华北地区”可以补充出“华北”，避免 SQL 条件值和真实存储值不一致
-        prompt = PromptTemplate(
-            template=load_prompt("extend_keywords_for_value_recall"),
-            input_variables=["query"],
-        )
-        # 字段值扩展 prompt 要求只输出 JSON 数组，解析后 result 就是 list[str]
-        output_parser = JsonOutputParser()
-        # LCEL 管道：填充提示词 -> 调用模型 -> 解析 JSON
-        chain = prompt | llm | output_parser
+        chain = build_prompt_chain("extend_keywords_for_value_recall")
 
         result = await chain.ainvoke({"query": query})
 

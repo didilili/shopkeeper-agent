@@ -6,15 +6,12 @@ SQL 生成节点
 """
 
 import yaml
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import PromptTemplate
 from langgraph.runtime import Runtime
 
 from app.agent.context import DataAgentContext
-from app.agent.llm import llm
 from app.agent.state import DataAgentState
 from app.core.log import logger
-from app.prompt.prompt_loader import load_prompt
+from app.prompt.factory import build_prompt_chain
 
 
 async def generate_sql(state: DataAgentState, runtime: Runtime[DataAgentContext]):
@@ -32,19 +29,7 @@ async def generate_sql(state: DataAgentState, runtime: Runtime[DataAgentContext]
         db_info = state["db_info"]
         query = state["query"]
 
-        prompt = PromptTemplate(
-            template=load_prompt("generate_sql"),
-            input_variables=[
-                "table_infos",
-                "metric_infos",
-                "date_info",
-                "db_info",
-                "query",
-            ],
-        )
-        # SQL 生成节点只需要纯文本 SQL，不能要求模型输出 JSON 或 Markdown 代码块
-        output_parser = StrOutputParser()
-        chain = prompt | llm | output_parser
+        chain = build_prompt_chain("generate_sql")
 
         result = await chain.ainvoke(
             {

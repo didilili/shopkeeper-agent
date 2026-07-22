@@ -1,0 +1,182 @@
+version: 1
+
+fixtures:
+  table_infos: &table_infos |-
+    - name: fact_order
+      role: fact
+      description: 订单事实表
+      columns:
+        - {name: order_id, role: primary_key, description: 订单唯一标识}
+        - {name: product_id, role: foreign_key, description: 商品外键}
+        - {name: customer_id, role: foreign_key, description: 客户外键}
+        - {name: date_id, role: foreign_key, description: 日期外键}
+        - {name: region_id, role: foreign_key, description: 地区外键}
+        - {name: order_quantity, role: measure, description: 商品购买数量}
+        - {name: order_amount, role: measure, description: 订单金额}
+    - name: dim_product
+      role: dim
+      description: 商品维度表
+      columns:
+        - {name: product_id, role: primary_key, description: 商品唯一标识}
+        - {name: product_name, role: dimension, description: 商品名称}
+        - {name: category, role: dimension, description: 商品品类}
+        - {name: brand, role: dimension, description: 商品品牌}
+    - name: dim_customer
+      role: dim
+      description: 客户维度表
+      columns:
+        - {name: customer_id, role: primary_key, description: 客户唯一标识}
+        - {name: customer_name, role: dimension, description: 客户名称}
+        - {name: gender, role: dimension, description: 客户性别}
+        - {name: member_level, role: dimension, description: 会员等级}
+    - name: dim_date
+      role: dim
+      description: 日期维度表
+      columns:
+        - {name: date_id, role: primary_key, description: 日期唯一标识}
+        - {name: year, role: dimension, description: 年份}
+        - {name: quarter, role: dimension, description: 季度}
+        - {name: month, role: dimension, description: 月份}
+    - name: dim_region
+      role: dim
+      description: 地区维度表
+      columns:
+        - {name: region_id, role: primary_key, description: 地区唯一标识}
+        - {name: province, role: dimension, description: 省份}
+        - {name: region_name, role: dimension, description: 大区}
+
+  metric_infos: &metric_infos |-
+    - name: GMV
+      description: 所有订单的成交金额总和
+      relevant_columns: [fact_order.order_amount]
+      alias: [成交总额, 订单总额]
+    - name: AOV
+      description: 所有订单的成交金额平均值
+      relevant_columns: [fact_order.order_amount]
+      alias: [平均客单价, 平均订单金额]
+
+  date_info: &date_info |-
+    date: 2025-03-31
+    weekday: Monday
+    quarter: Q1
+
+  db_info: &db_info |-
+    dialect: MySQL
+    version: "8.0"
+
+cases:
+  - id: column_recall_category_gmv
+    prompt: extend_keywords_for_column_recall
+    description: 品类 GMV 分析应召回维度、度量和日期字段概念
+    inputs:
+      query: 2025年第一季度各商品品类的成交总额是多少？
+    expected:
+      required_concepts:
+        - [商品品类, 品类, 分类]
+        - [订单金额, 成交金额, 销售额]
+        - [日期, 年份, 季度]
+      forbidden_terms: [SELECT, fact_order]
+
+  - id: column_recall_member_aov
+    prompt: extend_keywords_for_column_recall
+    description: 会员等级客单价分析应召回会员和金额字段
+    inputs:
+      query: 不同会员等级的平均客单价是多少？
+    expected:
+      required_concepts:
+        - [会员等级, 用户等级]
+        - [订单金额, 成交金额, 平均订单金额]
+      forbidden_terms: [SELECT]
+
+  - id: metric_recall_gmv
+    prompt: extend_keywords_for_metric_recall
+    description: 成交总额应命中 GMV 同义指标
+    inputs:
+      query: 第一季度华东地区的成交总额
+    expected:
+      required_concepts:
+        - [GMV, 成交总额, 订单总额]
+      forbidden_terms: [region_name, SELECT]
+
+  - id: value_recall_region_brand
+    prompt: extend_keywords_for_value_recall
+    description: 只提取可能真实存储的地区和品牌值
+    inputs:
+      query: 华东地区华为品牌的销售额是多少？
+    expected:
+      required_concepts:
+        - [华东]
+        - [华为]
+      forbidden_terms: [销售额, 地区字段, brand, SELECT]
+
+  - id: metric_filter_select_gmv
+    prompt: filter_metric_info
+    description: 从候选指标中只选择 GMV
+    inputs:
+      query: 各商品品类的成交总额
+      metric_infos: *metric_infos
+    expected:
+      exact_list: [GMV]
+
+  - id: metric_filter_empty
+    prompt: filter_metric_info
+    description: 只列举品牌时不需要度量指标
+    inputs:
+      query: 华东地区有哪些商品品牌？
+      metric_infos: *metric_infos
+    expected:
+      exact_list: []
+
+  - id: table_filter_category_gmv
+    prompt: filter_table_info
+    description: 品类 GMV 需要事实表、商品表、日期表和连接键
+    inputs:
+      query: 2025年第一季度各商品品类的成交总额是多少？
+      table_infos: *table_infos
+    expected:
+      required_mapping:
+        fact_order: [product_id, date_id, order_amount]
+        dim_product: [product_id, category]
+        dim_date: [date_id, year, quarter]
+      forbidden_keys: [dim_customer, dim_region]
+
+  - id: generate_sql_category_gmv
+    prompt: generate_sql
+    description: 生成第一季度按品类汇总 GMV 的 MySQL
+    inputs:
+      table_infos: *table_infos
+      metric_infos: *metric_infos
+      date_info: *date_info
+      db_info: *db_info
+      query: 2025年第一季度各商品品类的成交总额是多少？
+    expected:
+      sql_contains: [fact_order, dim_product, dim_date, order_amount, category, SUM, GROUP BY]
+      sql_excludes: [DELETE, UPDATE, INSERT, DROP]
+
+  - id: generate_sql_member_aov
+    prompt: generate_sql
+    description: 生成按会员等级计算平均订单金额的 MySQL
+    inputs:
+      table_infos: *table_infos
+      metric_infos: *metric_infos
+      date_info: *date_info
+      db_info: *db_info
+      query: 不同会员等级的平均客单价是多少？
+    expected:
+      sql_contains: [fact_order, dim_customer, order_amount, member_level, AVG, GROUP BY]
+      sql_excludes: [order_quantity, DELETE, UPDATE]
+
+  - id: correct_sql_unknown_amount_column
+    prompt: correct_sql
+    description: 将不存在的 sale_amount 最小修正为 order_amount
+    inputs:
+      table_infos: *table_infos
+      metric_infos: *metric_infos
+      date_info: *date_info
+      db_info: *db_info
+      query: 各商品品类的成交总额是多少？
+      sql: SELECT p.category, SUM(o.sale_amount) AS GMV FROM fact_order o JOIN dim_product p ON o.product_id = p.product_id GROUP BY p.category
+      error: "MySQL 1054: Unknown column 'o.sale_amount' in 'field list'"
+    expected:
+      sql_contains: [fact_order, dim_product, order_amount, category, SUM, GROUP BY]
+      sql_excludes: [sale_amount, DELETE, UPDATE]

@@ -6,16 +6,13 @@
 实现路径和字段召回类似：关键词扩展 -> Embedding -> Qdrant 相似度检索 -> MetricInfo 去重
 """
 
-from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.prompts import PromptTemplate
 from langgraph.runtime import Runtime
 
 from app.agent.context import DataAgentContext
-from app.agent.llm import llm
 from app.agent.state import DataAgentState
 from app.core.log import logger
 from app.entities.metric_info import MetricInfo
-from app.prompt.prompt_loader import load_prompt
+from app.prompt.factory import build_prompt_chain
 
 
 async def recall_metric(state: DataAgentState, runtime: Runtime[DataAgentContext]):
@@ -34,14 +31,7 @@ async def recall_metric(state: DataAgentState, runtime: Runtime[DataAgentContext
         metric_qdrant_repository = runtime.context["metric_qdrant_repository"]
 
         # 用 LLM 把用户问法扩展成“指标概念”列表，例如“销售总额”可扩展出“GMV”“成交额”
-        prompt = PromptTemplate(
-            template=load_prompt("extend_keywords_for_metric_recall"),
-            input_variables=["query"],
-        )
-        # 指标扩展 prompt 要求只输出 JSON 数组，解析后 result 就是 list[str]
-        output_parser = JsonOutputParser()
-        # LCEL 管道：填充提示词 -> 调用模型 -> 解析 JSON
-        chain = prompt | llm | output_parser
+        chain = build_prompt_chain("extend_keywords_for_metric_recall")
 
         result = await chain.ainvoke({"query": query})
 

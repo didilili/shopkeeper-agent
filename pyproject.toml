@@ -18,6 +18,7 @@ dependencies = [
     "langgraph>=1.1.6",
     "loguru>=0.7.3",
     "omegaconf>=2.3.0",
+    "pydantic>=2.12.0",
     "python-dotenv>=1.2.2",
     "pyyaml>=6.0.3",
     "qdrant-client>=1.17.1",
@@ -27,6 +28,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pre-commit>=4.3.0",
+    "pytest>=9.0.0",
     "ruff>=0.11.0",
 ]
 
@@ -37,3 +39,6 @@ target-version = "py314"
 [tool.ruff.lint]
 select = ["E", "F", "I"]
 ignore = ["E501"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

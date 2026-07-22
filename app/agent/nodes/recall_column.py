@@ -6,16 +6,13 @@
 本章的主线是：关键词扩展 -> Embedding -> Qdrant 相似度检索 -> ColumnInfo 去重
 """
 
-from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.prompts import PromptTemplate
 from langgraph.runtime import Runtime
 
 from app.agent.context import DataAgentContext
-from app.agent.llm import llm
 from app.agent.state import DataAgentState
 from app.core.log import logger
 from app.entities.column_info import ColumnInfo
-from app.prompt.prompt_loader import load_prompt
+from app.prompt.factory import build_prompt_chain
 
 
 async def recall_column(state: DataAgentState, runtime: Runtime[DataAgentContext]):
@@ -34,14 +31,7 @@ async def recall_column(state: DataAgentState, runtime: Runtime[DataAgentContext
         embedding_client = runtime.context["embedding_client"]
 
         # 用 LLM 把用户问法扩展成“字段语义”列表，例如“销售总额”可扩展出“销售金额”
-        prompt = PromptTemplate(
-            template=load_prompt("extend_keywords_for_column_recall"),
-            input_variables=["query"],
-        )
-        # 提示词要求模型只输出 JSON 数组，解析后 result 就是 list[str]
-        output_parser = JsonOutputParser()
-        # LCEL 管道：填充提示词 -> 调用模型 -> 解析 JSON
-        chain = prompt | llm | output_parser
+        chain = build_prompt_chain("extend_keywords_for_column_recall")
 
         result = await chain.ainvoke({"query": query})
 

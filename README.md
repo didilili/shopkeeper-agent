@@ -101,18 +101,21 @@ shopkeeper-agent/
 │   ├── agent/            # LangGraph 图、状态、上下文和各类节点
 │   ├── api/              # FastAPI 路由、依赖注入、生命周期和请求结构
 │   ├── clients/          # MySQL、Qdrant、Elasticsearch、Embedding 客户端管理
-│   ├── conf/             # 配置 dataclass 与配置加载工具
+│   ├── conf/             # Pydantic 应用配置与本地环境加载
 │   ├── core/             # 日志、request_id 上下文等通用能力
 │   ├── entities/         # 更贴近业务语义的数据对象
+│   ├── llm/              # 模型注册表、工厂和协议适配器
 │   ├── models/           # SQLAlchemy ORM 模型
-│   ├── prompt/           # Prompt 加载工具
+│   ├── prompt/           # Prompt 注册表、工厂、输出协议和候选校验
 │   ├── repositories/     # MySQL、Qdrant、Elasticsearch 数据访问层
 │   ├── scripts/          # 元数据知识库构建脚本
 │   └── services/         # 元数据构建服务和问数查询服务
-├── conf/                 # app_config.yaml、meta_config.yaml
+├── conf/                 # 环境配置、模型注册表和业务元数据配置
 ├── docker/               # Docker Compose、MySQL 初始化 SQL、ES 插件、Embedding 挂载目录
+├── evals/                # 基于真实电商 Schema 的 Prompt 评测集
 ├── frontend/             # React + Vite + Tailwind CSS 前端项目
-├── prompts/              # SQL 生成、修正、过滤等 Prompt 模板
+├── prompts/              # System 协议与 SQL、召回、过滤等 Prompt 模板
+├── tests/                # 配置与模型注册表自动化测试
 ├── main.py               # FastAPI 应用入口
 └── pyproject.toml        # Python 项目依赖与工具配置
 ```
@@ -120,6 +123,18 @@ shopkeeper-agent/
 ## 🚀 快速开始
 
 当前仓库已经包含一套可直接启动的本地开发环境，你可以按照以下顺序启动项目。
+
+Prompt 修改后可先运行不调用模型的契约评测：
+
+```bash
+uv run python -m app.scripts.evaluate_prompts --mode offline
+```
+
+配置真实 `LLM_API_KEY` 后，运行在线语义评测：
+
+```bash
+uv run python -m app.scripts.evaluate_prompts --mode live
+```
 
 ### 1. 准备环境
 
@@ -141,28 +156,52 @@ cd shopkeeper-agent
 uv sync
 ```
 
-### 4. 配置大模型 API Key
+### 4. 配置运行环境
 
 ```bash
 cp .env.example .env
 ```
 
-把 `.env` 中的 `LLM_API_KEY` 替换成真实密钥：
+项目采用“公共基线 + 环境覆盖 + 环境变量”的分层配置：
+
+- `conf/app_config.yaml`：各环境共享的默认结构
+- `conf/environments/development.yaml`：本地开发覆盖项
+- `conf/environments/test.yaml`：自动化测试覆盖项
+- `conf/environments/production.yaml`：生产环境覆盖项
+- `conf/models.yaml`：模型角色、部署和协议适配器注册表
+- `conf/prompts.yaml`：Prompt 版本、模板、变量、模型角色和输出协议
+- `.env`：仅用于本地注入连接信息和密钥，不会提交到 Git
+
+首次启动时，把 `.env` 中的 `LLM_API_KEY` 替换成真实密钥：
 
 ```bash
+APP_ENV=development
 LLM_API_KEY=your_real_api_key
 ```
 
-默认配置使用兼容 OpenAI 接口的硅基流动服务：
+基础设施配置按运行环境区分；模型配置独立采用
+`Profile -> Deployment -> Adapter` 结构。业务节点只依赖稳定的
+`sql_agent` 模型角色：
 
 ```yaml
-llm:
-    model_name: Pro/zai-org/GLM-5.1
-    api_key: ${oc.env:LLM_API_KEY}
-    base_url: https://api.siliconflow.cn/v1
+profiles:
+  sql_agent:
+    deployment: siliconflow_glm
+
+deployments:
+  siliconflow_glm:
+    adapter: openai_compatible
+    provider: siliconflow
+    model: Pro/zai-org/GLM-5.1
+    credentials:
+      api_key:
+        env: LLM_API_KEY
+        required: true
 ```
 
-如需使用其他兼容 OpenAI API 的模型平台，修改 [conf/app_config.yaml](conf/app_config.yaml) 中的 `model_name` 和 `base_url`。
+应用配置和模型注册表都使用 Pydantic 强校验，密码和 API Key 使用
+`SecretStr` 脱敏。生产部署设置 `APP_ENV=production`，并由部署平台注入
+数据库密码和模型密钥；配置错误时程序会在建立外部连接前终止启动。
 
 ### 5. 准备 Embedding 模型
 

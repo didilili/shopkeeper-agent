@@ -1,0 +1,7 @@
+# 本地开发：输出更详细日志，允许使用 Docker Compose 的默认开发凭据。
+runtime:
+  debug: true
+
+logging:
+  console:
+    level: DEBUG

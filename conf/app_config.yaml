@@ -1,44 +1,60 @@
+# 所有环境共享的配置基线。敏感信息只允许从环境变量或本地 .env 注入。
+runtime:
+  app_name: ${oc.env:APP_NAME,shopkeeper-agent}
+  environment: development
+  debug: false
+
 logging:
   file:
     enable: true
-    level: INFO
-    path: logs
-    rotation: "10 MB"
-    retention: "7 days"
+    level: ${oc.env:LOG_FILE_LEVEL,INFO}
+    path: ${oc.env:LOG_FILE_PATH,logs}
+    rotation: ${oc.env:LOG_ROTATION,10 MB}
+    retention: ${oc.env:LOG_RETENTION,7 days}
   console:
     enable: true
-    level: INFO
+    level: ${oc.env:LOG_CONSOLE_LEVEL,INFO}
 
 db_meta:
-  host: localhost
-  port: 3306
-  user: didilili
-  password: dili123
-  database: meta
+  host: ${oc.env:DB_META_HOST,127.0.0.1}
+  port: ${oc.env:DB_META_PORT,3306}
+  user: ${oc.env:DB_META_USER,didilili}
+  password: ${oc.env:DB_META_PASSWORD,''}
+  database: ${oc.env:DB_META_NAME,meta}
+  pool_size: ${oc.env:DB_META_POOL_SIZE,10}
+  max_overflow: ${oc.env:DB_META_MAX_OVERFLOW,20}
+  pool_recycle: ${oc.env:DB_META_POOL_RECYCLE,1800}
+  connect_timeout: ${oc.env:DB_META_CONNECT_TIMEOUT,10}
 
 db_dw:
-  host: localhost
-  port: 3306
-  user: didilili
-  password: dili123
-  database: dw
+  host: ${oc.env:DB_DW_HOST,127.0.0.1}
+  port: ${oc.env:DB_DW_PORT,3306}
+  user: ${oc.env:DB_DW_USER,didilili}
+  password: ${oc.env:DB_DW_PASSWORD,''}
+  database: ${oc.env:DB_DW_NAME,dw}
+  pool_size: ${oc.env:DB_DW_POOL_SIZE,10}
+  max_overflow: ${oc.env:DB_DW_MAX_OVERFLOW,20}
+  pool_recycle: ${oc.env:DB_DW_POOL_RECYCLE,1800}
+  connect_timeout: ${oc.env:DB_DW_CONNECT_TIMEOUT,10}
 
 qdrant:
-  host: localhost
-  port: 6333
-  embedding_size: 1024
+  host: ${oc.env:QDRANT_HOST,127.0.0.1}
+  port: ${oc.env:QDRANT_PORT,6333}
+  embedding_size: ${oc.env:QDRANT_EMBEDDING_SIZE,1024}
+  api_key: ${oc.env:QDRANT_API_KEY,''}
+  timeout: ${oc.env:QDRANT_TIMEOUT,10}
 
 embedding:
-  host: localhost
-  port: 8081
-  model: BAAI/bge-large-zh-v1.5
+  host: ${oc.env:EMBEDDING_HOST,127.0.0.1}
+  port: ${oc.env:EMBEDDING_PORT,8081}
+  model: ${oc.env:EMBEDDING_MODEL,BAAI/bge-large-zh-v1.5}
+  timeout: ${oc.env:EMBEDDING_TIMEOUT,30}
 
 es:
-  host: localhost
-  port: 9200
-  index_name: data_agent
-
-llm:
-  model_name: Pro/zai-org/GLM-5.1
-  api_key: ${oc.env:LLM_API_KEY}
-  base_url: https://api.siliconflow.cn/v1
+  scheme: ${oc.env:ES_SCHEME,http}
+  host: ${oc.env:ES_HOST,127.0.0.1}
+  port: ${oc.env:ES_PORT,9200}
+  index_name: ${oc.env:ES_INDEX_NAME,data_agent}
+  username: ${oc.env:ES_USERNAME,''}
+  password: ${oc.env:ES_PASSWORD,''}
+  request_timeout: ${oc.env:ES_REQUEST_TIMEOUT,30}

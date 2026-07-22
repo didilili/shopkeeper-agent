@@ -1,121 +1,177 @@
-"""
-应用主配置
+"""应用基础设施配置的分层加载与强类型校验。"""
 
-定义 conf/app_config.yaml 在程序中的结构化配置对象
-项目启动后会在这里一次性完成配置文件加载和类型化转换，其他模块只需要导入 app_config
-就可以按属性方式读取日志 MySQL Qdrant Embedding Elasticsearch 和 LLM 配置
-"""
-
-from dataclasses import dataclass
+import os
 from pathlib import Path
+from typing import Literal, Self
 
-from dotenv import load_dotenv
 from omegaconf import OmegaConf
+from omegaconf.errors import OmegaConfBaseException
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SecretStr,
+    ValidationError,
+    model_validator,
+)
+
+from app.conf.environment import load_local_environment
+
+EnvironmentName = Literal["development", "test", "production"]
+LogLevel = Literal["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"]
+
+project_root = Path(__file__).parents[2]
+config_dir = project_root / "conf"
 
 
-@dataclass
-class File:
-    """文件日志配置"""
-
-    enable: bool
-    level: str
-    path: str
-    rotation: str
-    retention: str
+class ConfigurationError(RuntimeError):
+    """配置文件无法读取或配置值不符合约束。"""
 
 
-@dataclass
-class Console:
-    """控制台日志配置"""
+class FrozenConfigModel(BaseModel):
+    """禁止未知字段和运行时修改的配置基类。"""
 
-    enable: bool
-    level: str
+    model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-@dataclass
-class LoggingConfig:
-    """日志总配置"""
-
-    file: File
-    console: Console
+class RuntimeConfig(FrozenConfigModel):
+    app_name: str = Field(min_length=1)
+    environment: EnvironmentName
+    debug: bool = False
 
 
-@dataclass
-class DBConfig:
-    """MySQL 连接配置"""
-
-    host: str
-    port: int
-    user: str
-    password: str
-    database: str
+class FileLogConfig(FrozenConfigModel):
+    enable: bool = True
+    level: LogLevel = "INFO"
+    path: str = Field(default="logs", min_length=1)
+    rotation: str = Field(default="10 MB", min_length=1)
+    retention: str = Field(default="7 days", min_length=1)
 
 
-@dataclass
-class QdrantConfig:
-    """Qdrant 连接与向量维度配置"""
-
-    host: str
-    port: int
-    embedding_size: int
+class ConsoleLogConfig(FrozenConfigModel):
+    enable: bool = True
+    level: LogLevel = "INFO"
 
 
-@dataclass
-class EmbeddingConfig:
-    """Embedding 服务配置"""
-
-    host: str
-    port: int
-    model: str
+class LoggingConfig(FrozenConfigModel):
+    file: FileLogConfig
+    console: ConsoleLogConfig
 
 
-@dataclass
-class ESConfig:
-    """Elasticsearch 配置"""
-
-    host: str
-    port: int
-    index_name: str
-
-
-@dataclass
-class LLMConfig:
-    """大模型调用配置"""
-
-    model_name: str
-    api_key: str
-    base_url: str
+class DBConfig(FrozenConfigModel):
+    host: str = Field(min_length=1)
+    port: int = Field(ge=1, le=65535)
+    user: str = Field(min_length=1)
+    password: SecretStr
+    database: str = Field(min_length=1)
+    pool_size: int = Field(gt=0)
+    max_overflow: int = Field(ge=0)
+    pool_recycle: int = Field(gt=0)
+    connect_timeout: int = Field(gt=0)
 
 
-@dataclass
-class AppConfig:
-    """项目级总配置入口"""
+class QdrantConfig(FrozenConfigModel):
+    host: str = Field(min_length=1)
+    port: int = Field(ge=1, le=65535)
+    embedding_size: int = Field(gt=0)
+    api_key: SecretStr = SecretStr("")
+    timeout: int = Field(gt=0)
 
+
+class EmbeddingConfig(FrozenConfigModel):
+    host: str = Field(min_length=1)
+    port: int = Field(ge=1, le=65535)
+    model: str = Field(min_length=1)
+    timeout: int = Field(gt=0)
+
+
+class ESConfig(FrozenConfigModel):
+    scheme: Literal["http", "https"] = "http"
+    host: str = Field(min_length=1)
+    port: int = Field(ge=1, le=65535)
+    index_name: str = Field(min_length=1)
+    username: str = ""
+    password: SecretStr = SecretStr("")
+    request_timeout: int = Field(gt=0)
+
+    @model_validator(mode="after")
+    def validate_auth_pair(self) -> Self:
+        has_username = bool(self.username.strip())
+        has_password = bool(self.password.get_secret_value().strip())
+        if has_username != has_password:
+            raise ValueError("ES 用户名和密码必须同时配置")
+        return self
+
+
+class AppConfig(FrozenConfigModel):
+    runtime: RuntimeConfig
     logging: LoggingConfig
     db_meta: DBConfig
     db_dw: DBConfig
     qdrant: QdrantConfig
     embedding: EmbeddingConfig
     es: ESConfig
-    llm: LLMConfig
+
+    @model_validator(mode="after")
+    def validate_environment_policy(self) -> Self:
+        database_passwords = {
+            "DB_META_PASSWORD": self.db_meta.password.get_secret_value(),
+            "DB_DW_PASSWORD": self.db_dw.password.get_secret_value(),
+        }
+        missing = [name for name, value in database_passwords.items() if not value]
+        if missing:
+            raise ValueError("数据库密码未配置：" + ", ".join(missing))
+
+        if self.runtime.environment == "production":
+            insecure_values = {"", "change_me", "dili123", "your_password_here"}
+            insecure = [
+                name
+                for name, value in database_passwords.items()
+                if value.strip().lower() in insecure_values
+            ]
+            if insecure:
+                raise ValueError(
+                    "生产环境禁止使用空值或示例密码：" + ", ".join(insecure)
+                )
+            if self.runtime.debug:
+                raise ValueError("生产环境必须关闭 runtime.debug")
+        return self
 
 
-# 从当前文件位置回到项目根目录，再定位到 conf/app_config.yaml
-project_root = Path(__file__).parents[2]
-config_file = project_root / "conf" / "app_config.yaml"
+def load_app_config(environment: str | None = None) -> AppConfig:
+    """合并公共配置和环境覆盖配置，再交给 Pydantic 校验。"""
 
-# 先读取本地 .env，让 YAML 中的 ${oc.env:...} 可以解析到敏感配置
-load_dotenv(project_root / ".env")
+    load_local_environment()
+    selected_environment = (
+        (environment or os.getenv("APP_ENV", "development")).strip().lower()
+    )
+    if selected_environment not in {"development", "test", "production"}:
+        raise ConfigurationError(
+            f"APP_ENV={selected_environment!r} 无效，可选值为 "
+            "development、test、production"
+        )
 
-# 读取 YAML 配置内容
-context = OmegaConf.load(config_file)
+    base_file = config_dir / "app_config.yaml"
+    environment_file = config_dir / "environments" / f"{selected_environment}.yaml"
 
-# 根据 AppConfig 生成结构化配置 schema
-schema = OmegaConf.structured(AppConfig)
+    try:
+        merged = OmegaConf.merge(
+            OmegaConf.load(base_file), OmegaConf.load(environment_file)
+        )
+        merged.runtime.environment = selected_environment
+        raw_config = OmegaConf.to_container(merged, resolve=True)
+        return AppConfig.model_validate(raw_config)
+    except (OSError, OmegaConfBaseException, ValidationError) as exc:
+        raise ConfigurationError(
+            f"加载 {selected_environment} 环境配置失败：{exc}"
+        ) from exc
 
-# 把配置结构和配置值合并，再转换成可以直接按属性访问的对象
-app_config: AppConfig = OmegaConf.to_object(OmegaConf.merge(schema, context))
+
+app_config = load_app_config()
+
 
 if __name__ == "__main__":
-    # 简单测试：验证配置是否能正常读取
-    print(app_config.es.host)
+    print(
+        f"configuration ok: app={app_config.runtime.app_name}, "
+        f"environment={app_config.runtime.environment}"
+    )

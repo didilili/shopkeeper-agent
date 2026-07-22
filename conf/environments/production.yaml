@@ -1,0 +1,10 @@
+# 生产环境：连接信息和密钥必须由部署平台注入，启动时会进行强校验。
+runtime:
+  debug: false
+
+logging:
+  file:
+    enable: true
+    level: INFO
+  console:
+    level: INFO

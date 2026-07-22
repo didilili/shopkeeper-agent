@@ -172,5 +172,5 @@ metrics:
   - name: AOV
     description: 全称Average Order Value，表示所有订单的成交金额平均值。
     relevant_columns:
-      - fact_order.order_quantity
+      - fact_order.order_amount
     alias: [平均单价, 平均订单金额]

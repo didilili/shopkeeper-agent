@@ -6,15 +6,12 @@ SQL 修正节点
 """
 
 import yaml
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import PromptTemplate
 from langgraph.runtime import Runtime
 
 from app.agent.context import DataAgentContext
-from app.agent.llm import llm
 from app.agent.state import DataAgentState
 from app.core.log import logger
-from app.prompt.prompt_loader import load_prompt
+from app.prompt.factory import build_prompt_chain
 
 
 async def correct_sql(state: DataAgentState, runtime: Runtime[DataAgentContext]):
@@ -36,21 +33,7 @@ async def correct_sql(state: DataAgentState, runtime: Runtime[DataAgentContext])
         sql = state["sql"]
         error = state["error"]
 
-        prompt = PromptTemplate(
-            template=load_prompt("correct_sql"),
-            input_variables=[
-                "table_infos",
-                "metric_infos",
-                "date_info",
-                "db_info",
-                "query",
-                "sql",
-                "error",
-            ],
-        )
-        # 修正后的输出仍然是一条纯 SQL 文本，用来覆盖 state["sql"]
-        output_parser = StrOutputParser()
-        chain = prompt | llm | output_parser
+        chain = build_prompt_chain("correct_sql")
 
         result = await chain.ainvoke(
             {

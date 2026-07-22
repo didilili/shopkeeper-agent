@@ -24,14 +24,24 @@ class ESClientManager:
 
     def _get_url(self) -> str:
         """拼接 Elasticsearch 服务地址"""
-        return f"http://{self.es_config.host}:{self.es_config.port}"
+        return f"{self.es_config.scheme}://{self.es_config.host}:{self.es_config.port}"
 
     def init(self):
         """
         初始化异步 Elasticsearch 客户端
         hosts 之所以是列表，是为了兼容 ES 常见的集群连接方式
         """
-        self.client = AsyncElasticsearch(hosts=[self._get_url()])
+        basic_auth = None
+        if self.es_config.username:
+            basic_auth = (
+                self.es_config.username,
+                self.es_config.password.get_secret_value(),
+            )
+        self.client = AsyncElasticsearch(
+            hosts=[self._get_url()],
+            basic_auth=basic_auth,
+            request_timeout=self.es_config.request_timeout,
+        )
 
     async def close(self):
         """关闭客户端连接"""

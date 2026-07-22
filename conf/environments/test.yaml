@@ -1,0 +1,17 @@
+# 自动化测试：减少日志和文件写入，外部依赖应由测试夹具替代。
+runtime:
+  debug: false
+
+logging:
+  file:
+    enable: false
+  console:
+    level: WARNING
+
+db_meta:
+  database: meta_test
+  password: test-only-password
+
+db_dw:
+  database: dw_test
+  password: test-only-password
