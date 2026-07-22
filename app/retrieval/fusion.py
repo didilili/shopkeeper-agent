@@ -35,13 +35,19 @@ def fuse_rankings(
 
     accumulators: dict[str, _Accumulator[T]] = {}
     for query, hits in query_results:
-        for rank, hit in enumerate(hits, start=1):
+        seen_in_query: set[str] = set()
+        unique_rank = 0
+        for hit in hits:
             item_key = key(hit.item)
+            if item_key in seen_in_query:
+                continue
+            seen_in_query.add(item_key)
+            unique_rank += 1
             accumulator = accumulators.setdefault(item_key, _Accumulator(item=hit.item))
-            accumulator.rrf_score += 1 / (rrf_k + rank)
+            accumulator.rrf_score += 1 / (rrf_k + unique_rank)
             if query not in accumulator.matched_queries:
                 accumulator.matched_queries.append(query)
-            accumulator.best_rank = min(accumulator.best_rank, rank)
+            accumulator.best_rank = min(accumulator.best_rank, unique_rank)
             accumulator.max_source_score = max(accumulator.max_source_score, hit.score)
 
     ranked: list[RankedCandidate[T]] = []

@@ -55,6 +55,34 @@ def test_exact_name_or_alias_receives_boost() -> None:
     assert ranked[0].item == exact
 
 
+def test_duplicate_vector_points_only_contribute_once_per_query() -> None:
+    first = Item("a", "订单金额")
+    duplicated = Item("b", "购买数量")
+    query_results = [
+        (
+            "成交金额",
+            [
+                SearchHit(first, 0.9),
+                SearchHit(duplicated, 0.8),
+                SearchHit(duplicated, 0.7),
+                SearchHit(duplicated, 0.6),
+            ],
+        )
+    ]
+
+    ranked = fuse_rankings(
+        query_results,
+        key=lambda item: item.id,
+        searchable_terms=lambda item: [item.name],
+        rrf_k=60,
+        exact_match_boost=0,
+        final_limit=10,
+    )
+
+    assert [candidate.item.id for candidate in ranked] == ["a", "b"]
+    assert ranked[1].best_rank == 2
+
+
 def test_ties_are_deterministic_and_final_limit_is_applied() -> None:
     query_results = [
         ("first-query", [SearchHit(Item("b", "B"), 0.8)]),
