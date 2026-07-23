@@ -97,6 +97,7 @@
 
 ```text
 shopkeeper-agent/
+├── .github/workflows/    # 后端与前端持续集成门禁
 ├── app/
 │   ├── agent/            # LangGraph 图、状态、上下文和各类节点
 │   ├── api/              # FastAPI 路由、依赖注入、生命周期和请求结构
@@ -226,6 +227,10 @@ Agent 生成和修正的 SQL 会在数据库边界再次经过只读安全审计
 设计边界见
 [`docs/SQL安全执行模块说明.md`](docs/SQL安全执行模块说明.md)。
 
+API 层会为每个请求生成或透传 `X-Request-ID`，对 SSE 异常进行脱敏，并提供
+存活与资源初始化状态端点。接口语义和 CI 门禁见
+[`docs/API交付层说明.md`](docs/API交付层说明.md)。
+
 ### 5. 准备 Embedding 模型
 
 项目通过 `TEI` 加载 `BAAI/bge-large-zh-v1.5`。模型文件体积较大，无法再仓库中进行提交，需要先下载到 Docker 挂载目录：
@@ -272,6 +277,13 @@ uv run fastapi dev app/main.py
 
 ```text
 POST http://127.0.0.1:8000/api/query
+```
+
+健康检查：
+
+```text
+GET http://127.0.0.1:8000/api/health/live
+GET http://127.0.0.1:8000/api/health/ready
 ```
 
 请求示例：

@@ -6,26 +6,52 @@ FastAPI 应用包入口
 具体的接口处理函数。
 """
 
+import re
 import uuid
 
 from fastapi import FastAPI, Request
 
 from app.api.lifespan import lifespan
+from app.api.routers.health_router import health_router
 from app.api.routers.query_router import query_router
+from app.config.app_config import app_config
 from app.core.context import request_id_ctx_var
 
-# lifespan 交给 FastAPI 管理，用于在服务启动和关闭时统一初始化与释放外部客户端
-app = FastAPI(lifespan=lifespan)
-
-# 把查询路由注册进应用；没有挂载时，/docs 和真实 HTTP 请求都访问不到该接口
-app.include_router(query_router)
+REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$")
 
 
-@app.middleware("http")
-async def add_request_id(request: Request, call_next):
-    # 请求被处理之前
-    request_id = uuid.uuid4()
-    request_id_ctx_var.set(request_id)
-    response = await call_next(request)
-    # 请求被处理之后
-    return response
+def _select_request_id(request: Request) -> str:
+    supplied = request.headers.get("X-Request-ID", "").strip()
+    if supplied and REQUEST_ID_PATTERN.fullmatch(supplied):
+        return supplied
+    return uuid.uuid4().hex
+
+
+def create_app(*, lifespan_handler=lifespan) -> FastAPI:
+    """创建应用实例；测试可关闭真实基础设施生命周期。"""
+
+    application = FastAPI(
+        title=app_config.runtime.app_name,
+        version="0.1.0",
+        lifespan=lifespan_handler,
+    )
+    application.state.ready = False
+    application.include_router(health_router)
+    application.include_router(query_router)
+
+    @application.middleware("http")
+    async def add_request_id(request: Request, call_next):
+        request_id = _select_request_id(request)
+        request.state.request_id = request_id
+        token = request_id_ctx_var.set(request_id)
+        try:
+            response = await call_next(request)
+            response.headers["X-Request-ID"] = request_id
+            return response
+        finally:
+            request_id_ctx_var.reset(token)
+
+    return application
+
+
+app = create_app()

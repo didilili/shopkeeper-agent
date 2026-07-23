@@ -8,7 +8,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from starlette.responses import StreamingResponse
 
 from app.api.dependencies import get_query_service
@@ -21,6 +21,7 @@ query_router = APIRouter()
 
 @query_router.post("/api/query")
 async def query_handler(
+    request: Request,
     # 请求体参数：FastAPI 会把前端 JSON 自动解析成 QuerySchema
     query: QuerySchema,
     # 服务依赖：FastAPI 会调用 get_query_service，递归组装它所需的仓储和客户端
@@ -30,6 +31,13 @@ async def query_handler(
 
     return StreamingResponse(
         # query.query 是用户问题字符串；QueryService.query 返回异步生成器供响应逐段消费
-        query_service.query(query.query),
+        query_service.query(
+            query.query,
+            request_id=request.state.request_id,
+        ),
         media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
     )

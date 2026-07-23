@@ -6,13 +6,18 @@
 并统一包装成 SSE 文本返回给路由层。
 """
 
+import asyncio
 import json
+from collections.abc import AsyncIterator
+from typing import Any
 
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
 
 from app.agent.context import DataAgentContext
 from app.agent.graph import graph
 from app.agent.state import DataAgentState
+from app.core.context import request_id_ctx_var
+from app.core.log import logger
 from app.repositories.es.value_es_repository import ValueESRepository
 from app.repositories.mysql.dw.dw_mysql_repository import DWMySQLRepository
 from app.repositories.mysql.meta.meta_mysql_repository import MetaMySQLRepository
@@ -31,6 +36,7 @@ class QueryService:
         column_qdrant_repository: ColumnQdrantRepository,
         metric_qdrant_repository: MetricQdrantRepository,
         value_es_repository: ValueESRepository,
+        agent_graph: Any = graph,
     ):
         # MySQL 仓储分别负责元数据补全和真实数仓环境信息读取
         self.meta_mysql_repository = meta_mysql_repository
@@ -41,10 +47,15 @@ class QueryService:
         self.column_qdrant_repository = column_qdrant_repository
         self.metric_qdrant_repository = metric_qdrant_repository
         self.value_es_repository = value_es_repository
+        self.agent_graph = agent_graph
 
-    async def query(self, query: str):
+    async def query(
+        self, query: str, *, request_id: str | None = None
+    ) -> AsyncIterator[str]:
         """执行一次问数工作流，并逐段产出 SSE 消息"""
 
+        selected_request_id = request_id or request_id_ctx_var.get()
+        token = request_id_ctx_var.set(selected_request_id)
         # State 只放会被图节点读写和合并的业务数据，外部工具对象不塞进 State
         state = DataAgentState(query=query)
         # Context 保存本次图执行需要复用的外部依赖，节点通过 runtime.context 读取
@@ -58,13 +69,26 @@ class QueryService:
         )
         try:
             # stream_mode="custom" 对应节点内部 writer(...) 写出的进度消息
-            async for chunk in graph.astream(
+            async for chunk in self.agent_graph.astream(
                 input=state, context=context, stream_mode="custom"
             ):
                 # SSE 要求每条消息以 data: 开头，并以两个换行符结束
                 # ensure_ascii=False 保留中文进度文案，default=str 兜底处理日期等非 JSON 类型
-                yield f"data: {json.dumps(chunk, ensure_ascii=False, default=str)}\n\n"
-        except Exception as e:
-            # 流式接口已经开始返回后不能再改 HTTP 状态码，因此把异常也包装成一条 SSE 消息
-            error = {"type": "error", "message": str(e)}
-            yield f"data: {json.dumps(error, ensure_ascii=False, default=str)}\n\n"
+                yield _encode_sse(chunk)
+        except asyncio.CancelledError:
+            logger.info("客户端取消问数请求")
+            raise
+        except Exception:
+            logger.exception("问数工作流执行失败")
+            error = {
+                "type": "error",
+                "message": "查询处理失败，请使用 request_id 联系管理员。",
+                "request_id": selected_request_id,
+            }
+            yield _encode_sse(error)
+        finally:
+            request_id_ctx_var.reset(token)
+
+
+def _encode_sse(event: Any) -> str:
+    return f"data: {json.dumps(event, ensure_ascii=False, default=str)}\n\n"
