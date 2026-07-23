@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from app.conf.app_config import DBConfig, app_config
+from app.config.app_config import DBConfig, app_config
 
 
 class MySQLClientManager:

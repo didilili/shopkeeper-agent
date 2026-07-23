@@ -7,15 +7,27 @@
 SQL 生成闭环中的数据库环境读取 SQL 校验和最终查询执行也集中放在这里
 """
 
+import asyncio
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.config.app_config import SQLExecutionConfig, app_config
+from app.core.log import logger
+from app.security.sql_guard import SQLGuard
 
 
 class DWMySQLRepository:
     """负责查询数仓真实表结构和字段样例值"""
 
-    def __init__(self, session: AsyncSession):
+    def __init__(
+        self,
+        session: AsyncSession,
+        execution_config: SQLExecutionConfig | None = None,
+    ):
         self.session = session
+        self.execution_config = execution_config or app_config.sql_execution
+        self.sql_guard = SQLGuard(max_sql_length=self.execution_config.max_sql_length)
 
     async def get_column_types(self, table_name: str) -> dict[str, str]:
         """查询整张表的字段类型，作为 ColumnInfo.type 的真实来源"""
@@ -44,11 +56,24 @@ class DWMySQLRepository:
         return {"dialect": dialect, "version": version}
 
     async def validate(self, sql: str):
-        """用 EXPLAIN 让数据库提前解析 SQL，发现语法 表名 字段名等错误"""
-        sql = f"explain {sql}"
-        await self.session.execute(text(sql))
+        """先执行安全审计，再用 EXPLAIN 检查语法、表名和字段名。"""
+
+        guarded_sql = self.sql_guard.validate(sql)
+        async with asyncio.timeout(self.execution_config.query_timeout_seconds):
+            await self.session.execute(text(f"explain {guarded_sql}"))
 
     async def run(self, sql: str) -> list[dict]:
-        """执行最终 SQL，并把 SQLAlchemy 行对象转换成前端更易消费的字典列表"""
-        result = await self.session.execute(text(sql))
-        return [dict(row) for row in result.mappings().fetchall()]
+        """再次执行安全审计，并限制等待时间和返回到应用层的数据量。"""
+
+        guarded_sql = self.sql_guard.validate(sql)
+        async with asyncio.timeout(self.execution_config.query_timeout_seconds):
+            result = await self.session.execute(text(guarded_sql))
+
+        rows = result.mappings().fetchmany(self.execution_config.max_result_rows + 1)
+        if len(rows) > self.execution_config.max_result_rows:
+            logger.warning(
+                "SQL 结果超过最大返回行数 {}，已截断",
+                self.execution_config.max_result_rows,
+            )
+            rows = rows[: self.execution_config.max_result_rows]
+        return [dict(row) for row in rows]

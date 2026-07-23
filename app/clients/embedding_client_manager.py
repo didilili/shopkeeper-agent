@@ -10,7 +10,7 @@ from typing import Optional
 
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
 
-from app.conf.app_config import EmbeddingConfig, app_config
+from app.config.app_config import EmbeddingConfig, app_config
 
 
 class EmbeddingClientManager:

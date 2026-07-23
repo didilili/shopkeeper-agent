@@ -1,6 +1,5 @@
 """Prompt 输出协议和安全解析器。"""
 
-import re
 from typing import Any, ClassVar
 
 from langchain_core.output_parsers import BaseOutputParser, JsonOutputParser
@@ -8,6 +7,7 @@ from pydantic import RootModel, ValidationError, field_validator
 
 from app.prompt.errors import PromptOutputError
 from app.prompt.schemas import PromptOutputType
+from app.security.sql_guard import SQLGuard, SQLSafetyError
 
 
 class StringList(RootModel[list[str]]):
@@ -67,10 +67,7 @@ class TableSelectionOutputParser(BaseOutputParser[dict[str, list[str]]]):
 
 
 class ReadOnlySQLOutputParser(BaseOutputParser[str]):
-    blocked_operations: ClassVar[re.Pattern[str]] = re.compile(
-        r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|CREATE|GRANT|REVOKE|REPLACE)\b",
-        re.IGNORECASE,
-    )
+    guard: ClassVar[SQLGuard] = SQLGuard(max_sql_length=20_000)
 
     @property
     def _type(self) -> str:
@@ -79,19 +76,17 @@ class ReadOnlySQLOutputParser(BaseOutputParser[str]):
     def parse(self, text: str) -> str:
         sql = text.strip()
         if sql.startswith("```"):
-            sql = re.sub(r"^```(?:sql)?\s*", "", sql, flags=re.IGNORECASE)
-            sql = re.sub(r"\s*```$", "", sql).strip()
+            lines = sql.splitlines()
+            if lines and lines[0].strip().casefold() in {"```", "```sql"}:
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            sql = "\n".join(lines).strip()
 
-        sql = sql.rstrip().removesuffix(";").rstrip()
-        if not sql:
-            raise PromptOutputError("模型没有返回 SQL")
-        if ";" in sql:
-            raise PromptOutputError("只允许返回一条 SQL")
-        if not re.match(r"^(SELECT|WITH)\b", sql, flags=re.IGNORECASE):
-            raise PromptOutputError("SQL 必须以 SELECT 或 WITH 开头")
-        if self.blocked_operations.search(sql):
-            raise PromptOutputError("SQL 包含禁止的写入或 DDL 操作")
-        return sql
+        try:
+            return self.guard.validate(sql)
+        except SQLSafetyError as exc:
+            raise PromptOutputError(str(exc)) from exc
 
 
 def get_output_parser(output_type: PromptOutputType) -> BaseOutputParser:

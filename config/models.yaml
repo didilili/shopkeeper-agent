@@ -1,3 +1,4 @@
+# 模型角色、部署与协议适配器注册表。
 version: 1
 default_profile: sql_agent
 

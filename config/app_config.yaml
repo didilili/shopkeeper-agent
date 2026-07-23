@@ -1,4 +1,4 @@
-# 所有环境共享的配置基线。敏感信息只允许从环境变量或本地 .env 注入。
+# 所有环境共享的配置资产基线。敏感信息只允许从环境变量或本地 .env 注入。
 runtime:
   app_name: ${oc.env:APP_NAME,shopkeeper-agent}
   environment: development
@@ -61,6 +61,7 @@ es:
 
 retrieval:
   max_concurrency: ${oc.env:RETRIEVAL_MAX_CONCURRENCY,8}
+  max_queries: ${oc.env:RETRIEVAL_MAX_QUERIES,12}
   column:
     score_threshold: ${oc.env:COLUMN_RETRIEVAL_SCORE_THRESHOLD,0.6}
     per_query_limit: ${oc.env:COLUMN_RETRIEVAL_PER_QUERY_LIMIT,20}
@@ -79,3 +80,9 @@ retrieval:
     final_limit: ${oc.env:VALUE_RETRIEVAL_FINAL_LIMIT,20}
     rrf_k: ${oc.env:VALUE_RETRIEVAL_RRF_K,60}
     exact_match_boost: ${oc.env:VALUE_RETRIEVAL_EXACT_BOOST,0.05}
+
+sql_execution:
+  max_sql_length: ${oc.env:SQL_MAX_LENGTH,12000}
+  max_result_rows: ${oc.env:SQL_MAX_RESULT_ROWS,1000}
+  query_timeout_seconds: ${oc.env:SQL_QUERY_TIMEOUT_SECONDS,30}
+  max_correction_attempts: ${oc.env:SQL_MAX_CORRECTION_ATTEMPTS,2}

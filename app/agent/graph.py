@@ -23,8 +23,10 @@ from app.agent.nodes.merge_retrieved_info import merge_retrieved_info
 from app.agent.nodes.recall_column import recall_column
 from app.agent.nodes.recall_metric import recall_metric
 from app.agent.nodes.recall_value import recall_value
+from app.agent.nodes.reject_sql import reject_sql
 from app.agent.nodes.run_sql import run_sql
 from app.agent.nodes.validate_sql import validate_sql
+from app.agent.routing import route_after_sql_validation
 from app.agent.state import DataAgentState
 from app.clients.embedding_client_manager import embedding_client_manager
 from app.clients.es_client_manager import es_client_manager
@@ -33,6 +35,7 @@ from app.clients.mysql_client_manager import (
     meta_mysql_client_manager,
 )
 from app.clients.qdrant_client_manager import qdrant_client_manager
+from app.config.app_config import app_config
 from app.repositories.es.value_es_repository import ValueESRepository
 from app.repositories.mysql.dw.dw_mysql_repository import DWMySQLRepository
 from app.repositories.mysql.meta.meta_mysql_repository import MetaMySQLRepository
@@ -54,6 +57,7 @@ graph_builder.add_node("add_extra_context", add_extra_context)
 graph_builder.add_node("generate_sql", generate_sql)
 graph_builder.add_node("validate_sql", validate_sql)
 graph_builder.add_node("correct_sql", correct_sql)
+graph_builder.add_node("reject_sql", reject_sql)
 graph_builder.add_node("run_sql", run_sql)
 
 # 从用户问题开始，先抽取关键词作为后续检索的基础
@@ -79,13 +83,21 @@ graph_builder.add_edge("filter_metric", "add_extra_context")
 graph_builder.add_edge("add_extra_context", "generate_sql")
 graph_builder.add_edge("generate_sql", "validate_sql")
 
-# SQL 校验通过就直接执行，校验失败则先进入修正节点
+# SQL 校验通过就执行；失败时在有限预算内修正，预算耗尽则拒绝执行
 graph_builder.add_conditional_edges(
     source="validate_sql",
-    path=lambda state: "run_sql" if state["error"] is None else "correct_sql",
-    path_map={"run_sql": "run_sql", "correct_sql": "correct_sql"},
+    path=lambda state: route_after_sql_validation(
+        state,
+        max_correction_attempts=app_config.sql_execution.max_correction_attempts,
+    ),
+    path_map={
+        "run_sql": "run_sql",
+        "correct_sql": "correct_sql",
+        "reject_sql": "reject_sql",
+    },
 )
-graph_builder.add_edge("correct_sql", "run_sql")
+graph_builder.add_edge("correct_sql", "validate_sql")
+graph_builder.add_edge("reject_sql", END)
 graph_builder.add_edge("run_sql", END)
 
 # 编译后的 graph 是对外使用的 Agent 执行入口

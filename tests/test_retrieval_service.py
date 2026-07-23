@@ -3,9 +3,16 @@
 import asyncio
 from dataclasses import dataclass
 
-from app.conf.app_config import RetrievalDomainConfig
+import pytest
+
+from app.config.app_config import RetrievalDomainConfig
+from app.retrieval.errors import RetrievalError
 from app.retrieval.schemas import SearchHit
-from app.retrieval.service import retrieve_vector_candidates, stable_unique
+from app.retrieval.service import (
+    retrieve_text_candidates,
+    retrieve_vector_candidates,
+    stable_unique,
+)
 
 
 @dataclass(frozen=True)
@@ -37,6 +44,13 @@ def test_stable_unique_preserves_first_occurrence() -> None:
     assert stable_unique([" GMV ", "成交额", "GMV", ""]) == ["GMV", "成交额"]
 
 
+def test_stable_unique_applies_limit_after_deduplication() -> None:
+    assert stable_unique(["GMV", "GMV", "成交额", "销售额"], limit=2) == [
+        "GMV",
+        "成交额",
+    ]
+
+
 def test_vector_retrieval_batches_embeddings_and_runs_searches_concurrently() -> None:
     embeddings = FakeEmbeddings()
     active = 0
@@ -60,6 +74,7 @@ def test_vector_retrieval_batches_embeddings_and_runs_searches_concurrently() ->
             search=search,
             config=retrieval_config(),
             max_concurrency=2,
+            max_queries=12,
             key=lambda item: item.id,
             searchable_terms=lambda item: [item.name],
         )
@@ -68,3 +83,65 @@ def test_vector_retrieval_batches_embeddings_and_runs_searches_concurrently() ->
     assert embeddings.calls == [["销售额", "成交额"]]
     assert max_active == 2
     assert len(ranked) == 2
+
+
+def test_text_retrieval_keeps_partial_results_when_one_query_fails() -> None:
+    async def search(query, *, score_threshold, limit):
+        if query == "bad":
+            raise ConnectionError("temporary outage")
+        return [SearchHit(Item(query, query), 0.8)]
+
+    ranked = asyncio.run(
+        retrieve_text_candidates(
+            ["good", "bad"],
+            search=search,
+            config=retrieval_config(),
+            max_concurrency=2,
+            max_queries=12,
+            key=lambda item: item.id,
+            searchable_terms=lambda item: [item.name],
+        )
+    )
+
+    assert [candidate.item.id for candidate in ranked] == ["good"]
+
+
+def test_text_retrieval_raises_domain_error_when_all_queries_fail() -> None:
+    async def search(query, *, score_threshold, limit):
+        raise ConnectionError(f"{query} unavailable")
+
+    with pytest.raises(RetrievalError, match="全部召回子查询失败"):
+        asyncio.run(
+            retrieve_text_candidates(
+                ["first", "second"],
+                search=search,
+                config=retrieval_config(),
+                max_concurrency=2,
+                max_queries=12,
+                key=lambda item: item.id,
+                searchable_terms=lambda item: [item.name],
+            )
+        )
+
+
+def test_vector_retrieval_rejects_incomplete_embedding_response() -> None:
+    class IncompleteEmbeddings:
+        async def aembed_documents(self, texts):
+            return [[1.0]]
+
+    async def search(vector, *, score_threshold, limit):
+        return []
+
+    with pytest.raises(RetrievalError, match="Embedding 返回数量"):
+        asyncio.run(
+            retrieve_vector_candidates(
+                ["first", "second"],
+                embedding_client=IncompleteEmbeddings(),
+                search=search,
+                config=retrieval_config(),
+                max_concurrency=2,
+                max_queries=12,
+                key=lambda item: item.id,
+                searchable_terms=lambda item: [item.name],
+            )
+        )

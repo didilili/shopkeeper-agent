@@ -52,7 +52,7 @@
   <rect x="24" y="224" width="1232" height="124" class="layer" fill="#ecfdf5" stroke="#16a34a"/>
   <text x="48" y="258" class="layer-title">API 与服务编排层</text>
   <rect x="78" y="282" width="210" height="50" class="box" stroke="#16a34a"/>
-  <text x="183" y="303" text-anchor="middle" class="box-title">main.py + lifespan</text>
+  <text x="183" y="303" text-anchor="middle" class="box-title">app/main.py + lifespan</text>
   <text x="183" y="322" text-anchor="middle" class="box-text">FastAPI lifespan</text>
   <rect x="350" y="282" width="210" height="50" class="box" stroke="#16a34a"/>
   <text x="455" y="303" text-anchor="middle" class="box-title">query_router.py</text>

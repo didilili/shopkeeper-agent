@@ -1,4 +1,4 @@
-"""本地环境变量加载入口。"""
+"""应用本地环境变量加载入口。"""
 
 from functools import lru_cache
 from pathlib import Path

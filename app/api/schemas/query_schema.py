@@ -5,11 +5,15 @@
 字段校验和 OpenAPI 文档生成交给 Pydantic 与 FastAPI 完成。
 """
 
-from pydantic import BaseModel
+from typing import Annotated
+
+from pydantic import BaseModel, StringConstraints
 
 
 class QuerySchema(BaseModel):
     """`/api/query` 请求体，承载用户输入的自然语言问题"""
 
     # 前端请求体中的 query 字段，例如 {"query": "统计华北地区销售额"}
-    query: str
+    query: Annotated[
+        str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)
+    ]

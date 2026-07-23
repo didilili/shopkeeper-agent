@@ -15,13 +15,13 @@ from pydantic import (
     model_validator,
 )
 
-from app.conf.environment import load_local_environment
+from app.config.environment import load_local_environment
 
 EnvironmentName = Literal["development", "test", "production"]
 LogLevel = Literal["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"]
 
 project_root = Path(__file__).parents[2]
-config_dir = project_root / "conf"
+config_dir = project_root / "config"
 
 
 class ConfigurationError(RuntimeError):
@@ -113,9 +113,17 @@ class RetrievalDomainConfig(FrozenConfigModel):
 
 class RetrievalConfig(FrozenConfigModel):
     max_concurrency: int = Field(gt=0, le=50)
+    max_queries: int = Field(gt=0, le=50)
     column: RetrievalDomainConfig
     metric: RetrievalDomainConfig
     value: RetrievalDomainConfig
+
+
+class SQLExecutionConfig(FrozenConfigModel):
+    max_sql_length: int = Field(gt=0, le=100_000)
+    max_result_rows: int = Field(gt=0, le=10_000)
+    query_timeout_seconds: float = Field(gt=0, le=300)
+    max_correction_attempts: int = Field(ge=0, le=3)
 
 
 class AppConfig(FrozenConfigModel):
@@ -127,6 +135,7 @@ class AppConfig(FrozenConfigModel):
     embedding: EmbeddingConfig
     es: ESConfig
     retrieval: RetrievalConfig
+    sql_execution: SQLExecutionConfig
 
     @model_validator(mode="after")
     def validate_environment_policy(self) -> Self:

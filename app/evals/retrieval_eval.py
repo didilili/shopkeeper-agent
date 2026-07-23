@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from app.clients.embedding_client_manager import embedding_client_manager
 from app.clients.es_client_manager import es_client_manager
 from app.clients.qdrant_client_manager import qdrant_client_manager
-from app.conf.app_config import app_config
+from app.config.app_config import app_config
 from app.repositories.es.value_es_repository import ValueESRepository
 from app.repositories.qdrant.column_qdrant_repository import ColumnQdrantRepository
 from app.repositories.qdrant.metric_qdrant_repository import MetricQdrantRepository
@@ -276,6 +276,7 @@ async def run_live_retrieval_evals(
                     search=column_repository.search,
                     config=app_config.retrieval.column,
                     max_concurrency=app_config.retrieval.max_concurrency,
+                    max_queries=app_config.retrieval.max_queries,
                     key=lambda item: item.id,
                     searchable_terms=lambda item: [item.name, *item.alias],
                 )
@@ -288,6 +289,7 @@ async def run_live_retrieval_evals(
                     search=metric_repository.search,
                     config=app_config.retrieval.metric,
                     max_concurrency=app_config.retrieval.max_concurrency,
+                    max_queries=app_config.retrieval.max_queries,
                     key=lambda item: item.id,
                     searchable_terms=lambda item: [item.name, *item.alias],
                 )
@@ -299,6 +301,7 @@ async def run_live_retrieval_evals(
                     search=value_repository.search,
                     config=app_config.retrieval.value,
                     max_concurrency=app_config.retrieval.max_concurrency,
+                    max_queries=app_config.retrieval.max_queries,
                     key=lambda item: item.id,
                     searchable_terms=lambda item: [item.value],
                 )

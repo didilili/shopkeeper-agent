@@ -101,7 +101,7 @@ shopkeeper-agent/
 │   ├── agent/            # LangGraph 图、状态、上下文和各类节点
 │   ├── api/              # FastAPI 路由、依赖注入、生命周期和请求结构
 │   ├── clients/          # MySQL、Qdrant、Elasticsearch、Embedding 客户端管理
-│   ├── conf/             # Pydantic 应用配置与本地环境加载
+│   ├── config/           # Pydantic 配置模型与本地环境加载
 │   ├── core/             # 日志、request_id 上下文等通用能力
 │   ├── entities/         # 更贴近业务语义的数据对象
 │   ├── llm/              # 模型注册表、工厂和协议适配器
@@ -109,15 +109,16 @@ shopkeeper-agent/
 │   ├── prompt/           # Prompt 注册表、工厂、输出协议和候选校验
 │   ├── retrieval/        # 并发召回、候选去重与 RRF 重排序
 │   ├── repositories/     # MySQL、Qdrant、Elasticsearch 数据访问层
+│   ├── security/         # Agent SQL 只读安全策略与执行边界
 │   ├── scripts/          # 元数据知识库构建脚本
 │   └── services/         # 元数据构建服务和问数查询服务
-├── conf/                 # 环境配置、模型注册表和业务元数据配置
+├── config/               # YAML 环境配置、模型注册表和业务元数据资产
 ├── docker/               # Docker Compose、MySQL 初始化 SQL、ES 插件、Embedding 挂载目录
 ├── evals/                # 基于真实电商 Schema 的 Prompt 评测集
 ├── frontend/             # React + Vite + Tailwind CSS 前端项目
 ├── prompts/              # System 协议与 SQL、召回、过滤等 Prompt 模板
 ├── tests/                # 配置与模型注册表自动化测试
-├── main.py               # FastAPI 应用入口
+├── app/main.py           # FastAPI 应用入口
 └── pyproject.toml        # Python 项目依赖与工具配置
 ```
 
@@ -174,12 +175,12 @@ cp .env.example .env
 
 项目采用“公共基线 + 环境覆盖 + 环境变量”的分层配置：
 
-- `conf/app_config.yaml`：各环境共享的默认结构
-- `conf/environments/development.yaml`：本地开发覆盖项
-- `conf/environments/test.yaml`：自动化测试覆盖项
-- `conf/environments/production.yaml`：生产环境覆盖项
-- `conf/models.yaml`：模型角色、部署和协议适配器注册表
-- `conf/prompts.yaml`：Prompt 版本、模板、变量、模型角色和输出协议
+- `config/app_config.yaml`：各环境共享的默认结构
+- `config/environments/development.yaml`：本地开发覆盖项
+- `config/environments/test.yaml`：自动化测试覆盖项
+- `config/environments/production.yaml`：生产环境覆盖项
+- `config/models.yaml`：模型角色、部署和协议适配器注册表
+- `config/prompts.yaml`：Prompt 版本、模板、变量、模型角色和输出协议
 - `.env`：仅用于本地注入连接信息和密钥，不会提交到 Git
 
 首次启动时，把 `.env` 中的 `LLM_API_KEY` 替换成真实密钥：
@@ -213,11 +214,16 @@ deployments:
 `SecretStr` 脱敏。生产部署设置 `APP_ENV=production`，并由部署平台注入
 数据库密码和模型密钥；配置错误时程序会在建立外部连接前终止启动。
 
-字段、指标和值域召回参数统一位于 `conf/app_config.yaml` 的 `retrieval`
+字段、指标和值域召回参数统一位于 `config/app_config.yaml` 的 `retrieval`
 配置段，可通过环境变量覆盖。召回层会稳定去重查询词、批量生成向量、
 并发访问检索仓储，再使用 RRF 融合多路结果；底层相似度分数与命中词会
 保留在排序过程和日志中。设计与调参说明见
 [`docs/召回与重排序模块说明.md`](docs/召回与重排序模块说明.md)。
+
+Agent 生成和修正的 SQL 会在数据库边界再次经过只读安全审计，并通过有限
+修正循环重新执行 `EXPLAIN` 校验；查询等待时间、SQL 长度和结果行数均可配置。
+设计边界见
+[`docs/SQL安全执行模块说明.md`](docs/SQL安全执行模块说明.md)。
 
 ### 5. 准备 Embedding 模型
 
@@ -250,7 +256,7 @@ docker compose -f docker/docker-compose.yaml up -d
 ### 7. 构建元数据知识库
 
 ```bash
-uv run python -m app.scripts.build_meta_knowledge -c conf/meta_config.yaml
+uv run python -m app.scripts.build_meta_knowledge -c config/meta_config.yaml
 ```
 
 这一步会把表字段元数据写入 MySQL，把字段和指标向量写入 Qdrant，并把字段真实取值写入 Elasticsearch。
@@ -258,7 +264,7 @@ uv run python -m app.scripts.build_meta_knowledge -c conf/meta_config.yaml
 ### 8. 启动后端
 
 ```bash
-uv run fastapi dev main.py
+uv run fastapi dev app/main.py
 ```
 
 后端接口：
@@ -344,9 +350,9 @@ git checkout main
 
 - 用户登录、角色权限和数据权限控制
 - 多租户隔离
-- SQL 安全审计和执行白名单
+- 完整的 SQL AST 审计、表级执行白名单和数据库代理治理
 - 查询缓存、限流和性能治理
-- 系统化评测集与自动化回归评测
+- 大规模生产评测集、人工标注平台和线上反馈闭环
 - 监控告警、链路追踪平台和灰度发布
 - 更复杂的多轮问数记忆、追问改写和会话管理
 

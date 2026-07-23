@@ -12,7 +12,7 @@ from app.prompt.schemas import PromptDefinition, PromptRegistryConfig
 
 PROJECT_ROOT = Path(__file__).parents[2]
 PROMPT_ROOT = PROJECT_ROOT / "prompts"
-DEFAULT_REGISTRY_PATH = PROJECT_ROOT / "conf" / "prompts.yaml"
+DEFAULT_REGISTRY_PATH = PROJECT_ROOT / "config" / "prompts.yaml"
 
 
 def _resolve_template_path(relative_path: str) -> Path:

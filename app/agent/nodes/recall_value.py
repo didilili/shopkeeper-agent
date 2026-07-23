@@ -10,7 +10,7 @@ from langgraph.runtime import Runtime
 
 from app.agent.context import DataAgentContext
 from app.agent.state import DataAgentState
-from app.conf.app_config import app_config
+from app.config.app_config import app_config
 from app.core.log import logger
 from app.entities.value_info import ValueInfo
 from app.prompt.factory import build_prompt_chain
@@ -42,6 +42,7 @@ async def recall_value(state: DataAgentState, runtime: Runtime[DataAgentContext]
             search=value_es_repository.search,
             config=app_config.retrieval.value,
             max_concurrency=app_config.retrieval.max_concurrency,
+            max_queries=app_config.retrieval.max_queries,
             key=lambda item: item.id,
             searchable_terms=lambda item: [item.value],
         )

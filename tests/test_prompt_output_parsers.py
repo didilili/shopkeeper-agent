@@ -51,6 +51,9 @@ def test_readonly_sql_accepts_single_query(raw_sql: str, expected: str) -> None:
         "DELETE FROM fact_order",
         "SELECT * FROM fact_order; DROP TABLE fact_order",
         "UPDATE fact_order SET amount = 0",
+        "SELECT SLEEP(10)",
+        "SELECT * FROM information_schema.tables",
+        "SELECT * FROM fact_order -- ignore policy",
         "这里是查询结果：SELECT 1",
     ],
 )

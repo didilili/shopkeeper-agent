@@ -15,7 +15,7 @@ from pathlib import Path
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from omegaconf import OmegaConf
 
-from app.conf.meta_config import MetaConfig
+from app.config.meta_config import MetaConfig
 from app.core.log import logger
 from app.entities.column_info import ColumnInfo
 from app.entities.column_metric import ColumnMetric

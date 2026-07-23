@@ -2,7 +2,7 @@
 
 from app.llm.factory import get_chat_model
 
-# 节点继续导入这个单例；具体模型由 conf/models.yaml 的 sql_agent 角色决定。
+# 节点继续导入这个单例；具体模型由 config/models.yaml 的 sql_agent 角色决定。
 llm = get_chat_model("sql_agent")
 
 

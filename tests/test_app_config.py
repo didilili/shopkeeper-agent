@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.conf.app_config import ConfigurationError, load_app_config
+from app.config.app_config import ConfigurationError, load_app_config
 
 
 def test_test_environment_uses_isolated_databases() -> None:
@@ -13,6 +13,9 @@ def test_test_environment_uses_isolated_databases() -> None:
     assert config.db_dw.database == "dw_test"
     assert config.retrieval.column.final_limit == 20
     assert config.retrieval.metric.final_limit == 10
+    assert config.retrieval.max_queries == 12
+    assert config.sql_execution.max_result_rows == 1000
+    assert config.sql_execution.max_correction_attempts == 2
 
 
 def test_secret_values_are_masked() -> None:
@@ -20,6 +23,16 @@ def test_secret_values_are_masked() -> None:
 
     assert "test-only-password" not in repr(config)
     assert "**********" in repr(config.db_meta.password)
+
+
+def test_retrieval_query_limit_can_be_overridden(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("RETRIEVAL_MAX_QUERIES", "6")
+
+    config = load_app_config("test")
+
+    assert config.retrieval.max_queries == 6
 
 
 def test_production_rejects_example_passwords(

@@ -1,3 +1,4 @@
+# 元数据知识库中的表与指标定义。
 tables:
   - name: dim_region
     role: dim

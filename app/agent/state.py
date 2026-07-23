@@ -75,5 +75,5 @@ class DataAgentState(TypedDict):
     db_info: DBInfoState  # 数据库方言和版本信息
 
     sql: str  # 生成或校正后的SQL
-
-    error: str  # 校验SQL时出现的错误信息
+    correction_attempts: int  # SQL 已执行的修正次数
+    error: str | None  # 校验SQL时出现的错误信息

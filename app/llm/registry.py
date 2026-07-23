@@ -9,7 +9,7 @@ from typing import Any
 import yaml
 from pydantic import SecretStr, ValidationError
 
-from app.conf.environment import load_local_environment
+from app.config.environment import load_local_environment
 from app.llm.errors import (
     CredentialError,
     LLMConfigurationError,
@@ -23,7 +23,7 @@ from app.llm.schemas import (
 )
 
 PROJECT_ROOT = Path(__file__).parents[2]
-DEFAULT_REGISTRY_PATH = PROJECT_ROOT / "conf" / "models.yaml"
+DEFAULT_REGISTRY_PATH = PROJECT_ROOT / "config" / "models.yaml"
 
 
 def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:

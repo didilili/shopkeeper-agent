@@ -9,7 +9,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from app.conf.app_config import app_config
+from app.config.app_config import app_config
 from app.core.context import request_id_ctx_var
 
 # 日志格式统一展示时间、级别、request_id 和调用位置，便于排查链路问题

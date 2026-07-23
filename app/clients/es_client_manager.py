@@ -10,7 +10,7 @@ from typing import Optional
 
 from elasticsearch import AsyncElasticsearch
 
-from app.conf.app_config import ESConfig, app_config
+from app.config.app_config import ESConfig, app_config
 
 
 class ESClientManager:

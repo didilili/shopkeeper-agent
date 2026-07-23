@@ -11,7 +11,7 @@ from typing import Optional
 
 from qdrant_client import AsyncQdrantClient, models
 
-from app.conf.app_config import QdrantConfig, app_config
+from app.config.app_config import QdrantConfig, app_config
 
 
 class QdrantClientManager:
