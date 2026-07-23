@@ -6,5 +6,27 @@
     "editor.codeActionsOnSave": {
         "source.fixAll.ruff": "explicit",
         "source.organizeImports.ruff": "explicit"
+    },
+    "files.exclude": {
+        "**/__pycache__": true,
+        ".pnpm-store": true,
+        ".pytest_cache": true,
+        ".ruff_cache": true,
+        ".venv": true,
+        "app/conf": true,
+        "conf": true,
+        "docker/embedding": true,
+        "frontend/dist": true,
+        "frontend/node_modules": true,
+        "logs": true,
+        "reports": true
+    },
+    "search.exclude": {
+        "**/__pycache__": true,
+        ".pnpm-store": true,
+        ".venv": true,
+        "docker/embedding": true,
+        "frontend/dist": true,
+        "frontend/node_modules": true
     }
 }

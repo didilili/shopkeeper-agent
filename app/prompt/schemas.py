@@ -14,8 +14,8 @@ class FrozenModel(BaseModel):
 class PromptDefinition(FrozenModel):
     version: str = Field(pattern=r"^\d+\.\d+\.\d+$")
     description: str = Field(min_length=1)
-    system_template: str = Field(pattern=r"^prompts/.+\.prompt$")
-    user_template: str = Field(pattern=r"^prompts/.+\.prompt$")
+    system_template: str = Field(pattern=r"^resources/prompts/.+\.prompt$")
+    user_template: str = Field(pattern=r"^resources/prompts/.+\.prompt$")
     model_profile: str = Field(min_length=1)
     input_variables: tuple[str, ...]
     output_type: PromptOutputType

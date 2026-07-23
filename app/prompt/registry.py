@@ -11,7 +11,7 @@ from app.prompt.errors import PromptConfigurationError, PromptNotFoundError
 from app.prompt.schemas import PromptDefinition, PromptRegistryConfig
 
 PROJECT_ROOT = Path(__file__).parents[2]
-PROMPT_ROOT = PROJECT_ROOT / "prompts"
+PROMPT_ROOT = PROJECT_ROOT / "resources" / "prompts"
 DEFAULT_REGISTRY_PATH = PROJECT_ROOT / "config" / "prompts.yaml"
 
 

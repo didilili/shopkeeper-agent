@@ -5,8 +5,8 @@ prompts:
   extend_keywords_for_column_recall:
     version: 1.0.0
     description: 将用户问题扩展为字段语义召回词
-    system_template: prompts/system/string_list.prompt
-    user_template: prompts/extend_keywords_for_column_recall.prompt
+    system_template: resources/prompts/system/string_list.prompt
+    user_template: resources/prompts/extend_keywords_for_column_recall.prompt
     model_profile: sql_agent
     input_variables: [query]
     output_type: string_list
@@ -14,8 +14,8 @@ prompts:
   extend_keywords_for_metric_recall:
     version: 1.0.0
     description: 将用户问题扩展为指标概念召回词
-    system_template: prompts/system/string_list.prompt
-    user_template: prompts/extend_keywords_for_metric_recall.prompt
+    system_template: resources/prompts/system/string_list.prompt
+    user_template: resources/prompts/extend_keywords_for_metric_recall.prompt
     model_profile: sql_agent
     input_variables: [query]
     output_type: string_list
@@ -23,8 +23,8 @@ prompts:
   extend_keywords_for_value_recall:
     version: 1.0.0
     description: 将用户问题扩展为字段值召回词
-    system_template: prompts/system/string_list.prompt
-    user_template: prompts/extend_keywords_for_value_recall.prompt
+    system_template: resources/prompts/system/string_list.prompt
+    user_template: resources/prompts/extend_keywords_for_value_recall.prompt
     model_profile: sql_agent
     input_variables: [query]
     output_type: string_list
@@ -32,8 +32,8 @@ prompts:
   filter_metric_info:
     version: 1.0.0
     description: 从候选指标中选择回答问题需要的最小集合
-    system_template: prompts/system/string_list.prompt
-    user_template: prompts/filter_metric_info.prompt
+    system_template: resources/prompts/system/string_list.prompt
+    user_template: resources/prompts/filter_metric_info.prompt
     model_profile: sql_agent
     input_variables: [query, metric_infos]
     output_type: string_list
@@ -41,8 +41,8 @@ prompts:
   filter_table_info:
     version: 1.0.0
     description: 从候选表结构中选择必要表和字段
-    system_template: prompts/system/table_selection.prompt
-    user_template: prompts/filter_table_info.prompt
+    system_template: resources/prompts/system/table_selection.prompt
+    user_template: resources/prompts/filter_table_info.prompt
     model_profile: sql_agent
     input_variables: [query, table_infos]
     output_type: table_selection
@@ -50,8 +50,8 @@ prompts:
   generate_sql:
     version: 1.0.0
     description: 基于受控上下文生成只读查询 SQL
-    system_template: prompts/system/readonly_sql.prompt
-    user_template: prompts/generate_sql.prompt
+    system_template: resources/prompts/system/readonly_sql.prompt
+    user_template: resources/prompts/generate_sql.prompt
     model_profile: sql_agent
     input_variables: [table_infos, metric_infos, date_info, db_info, query]
     output_type: readonly_sql
@@ -59,8 +59,8 @@ prompts:
   correct_sql:
     version: 1.0.0
     description: 根据校验错误最小化修正只读查询 SQL
-    system_template: prompts/system/readonly_sql.prompt
-    user_template: prompts/correct_sql.prompt
+    system_template: resources/prompts/system/readonly_sql.prompt
+    user_template: resources/prompts/correct_sql.prompt
     model_profile: sql_agent
     input_variables: [table_infos, metric_infos, date_info, db_info, query, sql, error]
     output_type: readonly_sql

@@ -4,7 +4,7 @@
 
 ## 评测范围
 
-评测集位于 `evals/prompt_cases.yaml`，使用项目真实的订单事实表、商品、客户、
+评测集位于 `resources/evals/prompt_cases.yaml`，使用项目真实的订单事实表、商品、客户、
 地区、日期维度以及 GMV、AOV 指标，共包含 10 个案例，覆盖全部 7 个 Prompt：
 
 - 字段、指标、字段值三路召回

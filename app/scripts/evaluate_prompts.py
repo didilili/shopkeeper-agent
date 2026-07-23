@@ -7,7 +7,7 @@ from pathlib import Path
 from app.evals.prompt_eval import load_eval_suite, run_prompt_evals
 
 PROJECT_ROOT = Path(__file__).parents[2]
-DEFAULT_SUITE = PROJECT_ROOT / "evals" / "prompt_cases.yaml"
+DEFAULT_SUITE = PROJECT_ROOT / "resources" / "evals" / "prompt_cases.yaml"
 
 
 def main() -> None:

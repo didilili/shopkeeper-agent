@@ -83,7 +83,9 @@ def test_missing_ranking_is_rejected():
 
 
 def test_repository_retrieval_suite_is_valid():
-    suite = load_retrieval_eval_suite(PROJECT_ROOT / "evals/retrieval_cases.yaml")
+    suite = load_retrieval_eval_suite(
+        PROJECT_ROOT / "resources/evals/retrieval_cases.yaml"
+    )
     description = describe_retrieval_suite(suite)
 
     assert description["total"] == 13

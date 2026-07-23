@@ -13,7 +13,7 @@ from app.evals.retrieval_eval import (
 )
 
 PROJECT_ROOT = Path(__file__).parents[2]
-DEFAULT_SUITE = PROJECT_ROOT / "evals" / "retrieval_cases.yaml"
+DEFAULT_SUITE = PROJECT_ROOT / "resources" / "evals" / "retrieval_cases.yaml"
 
 
 def _filter_domain(suite: RetrievalEvalSuite, domain: str | None) -> RetrievalEvalSuite:

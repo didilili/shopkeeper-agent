@@ -11,7 +11,7 @@ from app.evals.prompt_eval import (
 )
 
 PROJECT_ROOT = Path(__file__).parents[1]
-EVAL_SUITE = PROJECT_ROOT / "evals" / "prompt_cases.yaml"
+EVAL_SUITE = PROJECT_ROOT / "resources" / "evals" / "prompt_cases.yaml"
 
 
 def test_offline_eval_suite_passes_all_contracts() -> None:

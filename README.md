@@ -114,9 +114,10 @@ shopkeeper-agent/
 │   └── services/         # 元数据构建服务和问数查询服务
 ├── config/               # YAML 环境配置、模型注册表和业务元数据资产
 ├── docker/               # Docker Compose、MySQL 初始化 SQL、ES 插件、Embedding 挂载目录
-├── evals/                # 基于真实电商 Schema 的 Prompt 评测集
 ├── frontend/             # React + Vite + Tailwind CSS 前端项目
-├── prompts/              # System 协议与 SQL、召回、过滤等 Prompt 模板
+├── resources/            # Prompt 模板与离线评测数据等运行时资产
+│   ├── evals/            # 基于真实电商 Schema 的评测集
+│   └── prompts/          # SQL、召回、过滤等 Prompt 模板
 ├── tests/                # 配置与模型注册表自动化测试
 ├── app/main.py           # FastAPI 应用入口
 └── pyproject.toml        # Python 项目依赖与工具配置
