@@ -138,7 +138,7 @@ if __name__ == "__main__":
             state = DataAgentState(query="统计华北地区的销售总额")
             context = DataAgentContext(
                 column_qdrant_repository=column_qdrant_repository,
-                embedding_client=embedding_client_manager.client,
+                embedding_client=embedding_client_manager.get_client(),
                 metric_qdrant_repository=metric_qdrant_repository,
                 value_es_repository=value_es_repository,
                 meta_mysql_repository=meta_mysql_repository,
@@ -152,6 +152,7 @@ if __name__ == "__main__":
                 print(chunk)
 
         # 关闭显式创建的异步客户端，避免本地调试时连接资源悬挂
+        await embedding_client_manager.close()
         await qdrant_client_manager.close()
         await es_client_manager.close()
         await meta_mysql_client_manager.close()

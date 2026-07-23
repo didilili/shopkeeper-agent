@@ -8,10 +8,15 @@
 """
 
 from qdrant_client import AsyncQdrantClient
-from qdrant_client.models import Distance, PointStruct, VectorParams
+from qdrant_client.models import PointStruct
 
 from app.config.app_config import app_config
 from app.entities.metric_info import MetricInfo
+from app.repositories.qdrant.vector_contract import (
+    ensure_vector_collection,
+    recreate_vector_collection,
+    validate_vector_batch,
+)
 from app.retrieval.schemas import SearchHit
 
 
@@ -25,15 +30,19 @@ class MetricQdrantRepository:
 
     async def ensure_collection(self):
         """确保指标向量集合存在，并按当前 Embedding 维度初始化"""
-        if not await self.client.collection_exists(self.collection_name):
-            await self.client.create_collection(
-                collection_name=self.collection_name,
-                vectors_config=VectorParams(
-                    # 向量维度必须和 Embedding 模型输出一致，否则写入时会失败
-                    size=app_config.qdrant.embedding_size,
-                    distance=Distance.COSINE,
-                ),
-            )
+        await ensure_vector_collection(
+            self.client,
+            self.collection_name,
+            dimensions=app_config.qdrant.embedding_size,
+        )
+
+    async def recreate_collection(self) -> None:
+        """重建离线索引 collection，确保删除已失效的历史向量点。"""
+        await recreate_vector_collection(
+            self.client,
+            self.collection_name,
+            dimensions=app_config.qdrant.embedding_size,
+        )
 
     async def upsert(
         self,
@@ -43,10 +52,20 @@ class MetricQdrantRepository:
         batch_size: int = 10,
     ):
         """分批 upsert 指标向量点，避免一次提交过多 point"""
-        # ids embeddings payloads 三个列表按相同下标组成一条完整的 Qdrant point
+        validate_vector_batch(
+            ids,
+            embeddings,
+            payloads,
+            dimensions=app_config.qdrant.embedding_size,
+        )
         points: list[PointStruct] = [
             PointStruct(id=id, vector=embedding, payload=payload)
-            for id, embedding, payload in zip(ids, embeddings, payloads)
+            for id, embedding, payload in zip(
+                ids,
+                embeddings,
+                payloads,
+                strict=True,
+            )
         ]
         for i in range(0, len(points), batch_size):
             await self.client.upsert(

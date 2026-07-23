@@ -238,6 +238,7 @@ async def run_live_retrieval_evals(
     needs_vector = bool(domains & {"column", "metric"})
     needs_text = "value" in domains
     qdrant_initialized = False
+    embedding_initialized = False
     es_initialized = False
     rankings: dict[str, list[str]] = {}
 
@@ -249,9 +250,10 @@ async def run_live_retrieval_evals(
 
         if needs_vector:
             embedding_client_manager.init()
+            embedding_initialized = True
             qdrant_client_manager.init()
             qdrant_initialized = True
-            embedding_client = embedding_client_manager.client
+            embedding_client = embedding_client_manager.get_client()
             qdrant_client = qdrant_client_manager.client
             if embedding_client is None or qdrant_client is None:
                 raise RuntimeError("向量召回客户端初始化失败")
@@ -307,6 +309,8 @@ async def run_live_retrieval_evals(
                 )
             rankings[case.id] = [candidate.item.id for candidate in candidates]
     finally:
+        if embedding_initialized:
+            await embedding_client_manager.close()
         if qdrant_initialized:
             await qdrant_client_manager.close()
         if es_initialized:

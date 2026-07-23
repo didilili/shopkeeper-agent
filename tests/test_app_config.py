@@ -18,6 +18,7 @@ def test_test_environment_uses_isolated_databases() -> None:
     assert config.sql_execution.max_correction_attempts == 2
     assert config.api_access.enabled is False
     assert config.api_access.rate_limit_requests == 60
+    assert config.embedding.batch_size == 20
 
 
 def test_secret_values_are_masked() -> None:

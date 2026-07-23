@@ -83,6 +83,7 @@ class EmbeddingConfig(FrozenConfigModel):
     port: int = Field(ge=1, le=65535)
     model: str = Field(min_length=1)
     timeout: int = Field(gt=0)
+    batch_size: int = Field(gt=0, le=256)
 
 
 class ESConfig(FrozenConfigModel):

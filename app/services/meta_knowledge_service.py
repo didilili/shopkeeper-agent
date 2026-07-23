@@ -9,12 +9,14 @@
 """
 
 import uuid
+from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
+from typing import Any, Protocol
 
-from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from omegaconf import OmegaConf
 
+from app.clients.embedding_client_manager import EmbeddingClient
 from app.config.meta_config import MetaConfig
 from app.core.log import logger
 from app.entities.column_info import ColumnInfo
@@ -29,6 +31,20 @@ from app.repositories.qdrant.column_qdrant_repository import ColumnQdrantReposit
 from app.repositories.qdrant.metric_qdrant_repository import MetricQdrantRepository
 
 
+class VectorRepository(Protocol):
+    collection_name: str
+
+    async def recreate_collection(self) -> None: ...
+
+    async def upsert(
+        self,
+        ids: list[str],
+        embeddings: list[list[float]],
+        payloads: list[dict[str, Any]],
+        batch_size: int = 10,
+    ) -> None: ...
+
+
 class MetaKnowledgeService:
     """负责串联元数据知识库构建流程的应用服务"""
 
@@ -37,7 +53,7 @@ class MetaKnowledgeService:
         meta_mysql_repository: MetaMySQLRepository,
         dw_mysql_repository: DWMySQLRepository,
         column_qdrant_repository: ColumnQdrantRepository,
-        embedding_client: HuggingFaceEndpointEmbeddings,
+        embedding_client: EmbeddingClient,
         value_es_repository: ValueESRepository,
         metric_qdrant_repository: MetricQdrantRepository,
     ):
@@ -48,7 +64,7 @@ class MetaKnowledgeService:
         # 字段向量集合的创建和写入统一交给 Qdrant Repository
         self.column_qdrant_repository: ColumnQdrantRepository = column_qdrant_repository
         # 向量化动作放在 Service 层
-        self.embedding_client: HuggingFaceEndpointEmbeddings = embedding_client
+        self.embedding_client: EmbeddingClient = embedding_client
         # 字段值全文索引的写入统一交给 ES Repository
         self.value_es_repository: ValueESRepository = value_es_repository
         # 指标向量集合和字段向量集合分开管理，便于后续按对象类型独立召回
@@ -98,54 +114,74 @@ class MetaKnowledgeService:
 
         return column_infos
 
+    @staticmethod
+    def _vector_points(
+        *,
+        collection_name: str,
+        entity_id: str,
+        payload: dict[str, Any],
+        texts: Sequence[tuple[str, str]],
+    ) -> list[dict[str, Any]]:
+        points: list[dict[str, Any]] = []
+        for source, text in texts:
+            normalized_text = text.strip()
+            if not normalized_text:
+                continue
+            point_id = uuid.uuid5(
+                uuid.NAMESPACE_URL,
+                f"shopkeeper-agent:{collection_name}:{entity_id}:{source}",
+            )
+            points.append(
+                {
+                    "id": str(point_id),
+                    "embedding_text": normalized_text,
+                    "payload": payload,
+                }
+            )
+        return points
+
+    async def _replace_vector_index(
+        self,
+        repository: VectorRepository,
+        points: list[dict[str, Any]],
+    ) -> None:
+        embedding_texts = [point["embedding_text"] for point in points]
+        embeddings = await self.embedding_client.aembed_documents(embedding_texts)
+        if len(embeddings) != len(points):
+            raise RuntimeError(
+                "Embedding 返回数量与索引点数量不一致："
+                f"expected={len(points)}, actual={len(embeddings)}"
+            )
+
+        await repository.recreate_collection()
+        await repository.upsert(
+            [point["id"] for point in points],
+            embeddings,
+            [point["payload"] for point in points],
+        )
+
     async def _save_column_info_to_qdrant(self, column_infos: list[ColumnInfo]):
         """把字段元数据继续推进成可语义检索的 Qdrant 向量点"""
-        await self.column_qdrant_repository.ensure_collection()
 
-        points: list[dict] = []
+        points: list[dict[str, Any]] = []
         for column_info in column_infos:
-            # 一个字段不会只生成一个向量点，而是把名字 描述 别名都拆开建立语义入口
-            points.append(
-                {
-                    "id": uuid.uuid4(),
-                    "embedding_text": column_info.name,
-                    "payload": asdict(column_info),
-                }
-            )
-
-            points.append(
-                {
-                    "id": uuid.uuid4(),
-                    "embedding_text": column_info.description,
-                    "payload": asdict(column_info),
-                }
-            )
-
-            for alia in column_info.alias:
-                points.append(
-                    {
-                        "id": uuid.uuid4(),
-                        "embedding_text": alia,
-                        "payload": asdict(column_info),
-                    }
+            points.extend(
+                self._vector_points(
+                    collection_name=self.column_qdrant_repository.collection_name,
+                    entity_id=column_info.id,
+                    payload=asdict(column_info),
+                    texts=[
+                        ("name", column_info.name),
+                        ("description", column_info.description),
+                        *[
+                            (f"alias:{index}", alias)
+                            for index, alias in enumerate(column_info.alias)
+                        ],
+                    ],
                 )
-
-        # 先把待向量化文本抽出来，再分批调用 Embedding 服务
-        # 这样更容易控制单次请求大小
-        embeddings: list[list[float]] = []
-        embedding_texts = [point["embedding_text"] for point in points]
-        embedding_batch_size = 20
-        for i in range(0, len(embedding_texts), embedding_batch_size):
-            batch_embedding_texts = embedding_texts[i : i + embedding_batch_size]
-            batch_embeddings = await self.embedding_client.aembed_documents(
-                batch_embedding_texts
             )
-            embeddings.extend(batch_embeddings)
 
-        ids = [point["id"] for point in points]
-        payloads = [point["payload"] for point in points]
-
-        await self.column_qdrant_repository.upsert(ids, embeddings, payloads)
+        await self._replace_vector_index(self.column_qdrant_repository, points)
 
     async def _save_value_info_to_es(
         self, meta_config: MetaConfig, column_infos: list[ColumnInfo]
@@ -212,52 +248,26 @@ class MetaKnowledgeService:
 
     async def _save_metrics_to_qdrant(self, metric_infos: list[MetricInfo]):
         """把指标元数据继续推进成可语义检索的 Qdrant 向量点"""
-        await self.metric_qdrant_repository.ensure_collection()
 
-        points: list[dict] = []
+        points: list[dict[str, Any]] = []
         for metric_info in metric_infos:
-            # 和字段一样，一个指标也会拆成名字 描述 别名这几类语义入口
-            points.append(
-                {
-                    "id": uuid.uuid4(),
-                    "embedding_text": metric_info.name,
-                    "payload": asdict(metric_info),
-                }
-            )
-
-            points.append(
-                {
-                    "id": uuid.uuid4(),
-                    "embedding_text": metric_info.description,
-                    "payload": asdict(metric_info),
-                }
-            )
-
-            for alia in metric_info.alias:
-                points.append(
-                    {
-                        "id": uuid.uuid4(),
-                        "embedding_text": alia,
-                        "payload": asdict(metric_info),
-                    }
+            points.extend(
+                self._vector_points(
+                    collection_name=self.metric_qdrant_repository.collection_name,
+                    entity_id=metric_info.id,
+                    payload=asdict(metric_info),
+                    texts=[
+                        ("name", metric_info.name),
+                        ("description", metric_info.description),
+                        *[
+                            (f"alias:{index}", alias)
+                            for index, alias in enumerate(metric_info.alias)
+                        ],
+                    ],
                 )
-
-        # 先把待向量化文本抽出来，再分批调用 Embedding 服务
-        # 返回的 embeddings 要继续和前面的 id payload 按顺序对齐
-        embeddings: list[list[float]] = []
-        embedding_texts = [point["embedding_text"] for point in points]
-        embedding_batch_size = 20
-        for i in range(0, len(embedding_texts), embedding_batch_size):
-            batch_embedding_texts = embedding_texts[i : i + embedding_batch_size]
-            batch_embeddings = await self.embedding_client.aembed_documents(
-                batch_embedding_texts
             )
-            embeddings.extend(batch_embeddings)
 
-        ids = [point["id"] for point in points]
-        payloads = [point["payload"] for point in points]
-
-        await self.metric_qdrant_repository.upsert(ids, embeddings, payloads)
+        await self._replace_vector_index(self.metric_qdrant_repository, points)
 
     async def build(self, config_path: Path):
         """读取配置并依次构建 Meta MySQL Qdrant 和 ES 中的元数据索引"""

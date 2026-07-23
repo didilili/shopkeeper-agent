@@ -4,8 +4,7 @@ import asyncio
 from collections.abc import Awaitable, Callable, Iterable
 from typing import TypeVar
 
-from langchain_huggingface import HuggingFaceEndpointEmbeddings
-
+from app.clients.embedding_client_manager import EmbeddingClient
 from app.config.app_config import RetrievalDomainConfig
 from app.core.log import logger
 from app.retrieval.errors import RetrievalError
@@ -65,7 +64,7 @@ def _successful_query_results(
 async def retrieve_vector_candidates(
     queries: Iterable[str],
     *,
-    embedding_client: HuggingFaceEndpointEmbeddings,
+    embedding_client: EmbeddingClient,
     search: Callable[..., Awaitable[list[SearchHit[T]]]],
     config: RetrievalDomainConfig,
     max_concurrency: int,

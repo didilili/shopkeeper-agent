@@ -49,6 +49,7 @@ embedding:
   port: ${oc.env:EMBEDDING_PORT,8081}
   model: ${oc.env:EMBEDDING_MODEL,BAAI/bge-large-zh-v1.5}
   timeout: ${oc.env:EMBEDDING_TIMEOUT,30}
+  batch_size: ${oc.env:EMBEDDING_BATCH_SIZE,20}
 
 es:
   scheme: ${oc.env:ES_SCHEME,http}

@@ -10,8 +10,7 @@ Context 用来保存一次图执行过程中不参与状态合并的外部依赖
 
 from typing import TypedDict
 
-from langchain_huggingface import HuggingFaceEndpointEmbeddings
-
+from app.clients.embedding_client_manager import EmbeddingClient
 from app.repositories.es.value_es_repository import ValueESRepository
 from app.repositories.mysql.dw.dw_mysql_repository import DWMySQLRepository
 from app.repositories.mysql.meta.meta_mysql_repository import MetaMySQLRepository
@@ -25,7 +24,7 @@ class DataAgentContext(TypedDict):
     # 字段向量仓储，负责根据向量从 Qdrant 检索候选字段
     column_qdrant_repository: ColumnQdrantRepository
     # Embedding 客户端，负责把关键词转换成向量检索所需的 query vector
-    embedding_client: HuggingFaceEndpointEmbeddings
+    embedding_client: EmbeddingClient
     # 指标向量仓储，负责根据向量从 Qdrant 检索候选指标
     metric_qdrant_repository: MetricQdrantRepository
     # 字段取值全文检索仓储，负责从 Elasticsearch 检索真实字段值

@@ -9,10 +9,12 @@ FastAPI 依赖组装
 from typing import Annotated
 
 from fastapi import Depends
-from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.clients.embedding_client_manager import embedding_client_manager
+from app.clients.embedding_client_manager import (
+    EmbeddingClient,
+    embedding_client_manager,
+)
 from app.clients.es_client_manager import es_client_manager
 from app.clients.mysql_client_manager import (
     dw_mysql_client_manager,
@@ -43,10 +45,10 @@ async def get_meta_mysql_repository(
     return MetaMySQLRepository(session)
 
 
-async def get_embedding_client() -> HuggingFaceEndpointEmbeddings:
+async def get_embedding_client() -> EmbeddingClient:
     """获取应用启动阶段初始化好的 Embedding 客户端"""
 
-    return embedding_client_manager.client
+    return embedding_client_manager.get_client()
 
 
 async def get_dw_session():
@@ -86,9 +88,7 @@ async def get_query_service(
     meta_mysql_repository: Annotated[
         MetaMySQLRepository, Depends(get_meta_mysql_repository)
     ],
-    embedding_client: Annotated[
-        HuggingFaceEndpointEmbeddings, Depends(get_embedding_client)
-    ],
+    embedding_client: Annotated[EmbeddingClient, Depends(get_embedding_client)],
     dw_mysql_repository: Annotated[DWMySQLRepository, Depends(get_dw_mysql_repository)],
     column_qdrant_repository: Annotated[
         ColumnQdrantRepository, Depends(get_column_qdrant_repository)
