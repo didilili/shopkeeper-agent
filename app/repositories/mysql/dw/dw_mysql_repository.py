@@ -27,7 +27,10 @@ class DWMySQLRepository:
     ):
         self.session = session
         self.execution_config = execution_config or app_config.sql_execution
-        self.sql_guard = SQLGuard(max_sql_length=self.execution_config.max_sql_length)
+        self.sql_guard = SQLGuard(
+            max_sql_length=self.execution_config.max_sql_length,
+            allowed_schema=app_config.db_dw.database,
+        )
 
     async def get_column_types(self, table_name: str) -> dict[str, str]:
         """查询整张表的字段类型，作为 ColumnInfo.type 的真实来源"""
@@ -55,17 +58,19 @@ class DWMySQLRepository:
         dialect = self.session.bind.dialect.name
         return {"dialect": dialect, "version": version}
 
-    async def validate(self, sql: str):
+    async def validate(self, sql: str, *, allowed_tables: set[str] | None = None):
         """先执行安全审计，再用 EXPLAIN 检查语法、表名和字段名。"""
 
-        guarded_sql = self.sql_guard.validate(sql)
+        guarded_sql = self.sql_guard.validate(sql, allowed_tables=allowed_tables)
         async with asyncio.timeout(self.execution_config.query_timeout_seconds):
             await self.session.execute(text(f"explain {guarded_sql}"))
 
-    async def run(self, sql: str) -> list[dict]:
+    async def run(
+        self, sql: str, *, allowed_tables: set[str] | None = None
+    ) -> list[dict]:
         """再次执行安全审计，并限制等待时间和返回到应用层的数据量。"""
 
-        guarded_sql = self.sql_guard.validate(sql)
+        guarded_sql = self.sql_guard.validate(sql, allowed_tables=allowed_tables)
         async with asyncio.timeout(self.execution_config.query_timeout_seconds):
             result = await self.session.execute(text(guarded_sql))
 

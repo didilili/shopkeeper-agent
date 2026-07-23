@@ -1,7 +1,11 @@
 """Agent 生成 SQL 在进入数据库前必须通过的保守安全策略。"""
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
+
+from sqlglot import exp, parse_one
+from sqlglot.errors import ParseError
 
 
 class SQLSafetyError(ValueError):
@@ -44,6 +48,7 @@ class SQLGuard:
     """执行边界使用的单语句只读 SQL 守卫。"""
 
     max_sql_length: int
+    allowed_schema: str | None = None
 
     _blocked_operations = re.compile(
         r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|CREATE|GRANT|REVOKE|"
@@ -64,7 +69,12 @@ class SQLGuard:
         re.IGNORECASE,
     )
 
-    def validate(self, raw_sql: str) -> str:
+    def validate(
+        self,
+        raw_sql: str,
+        *,
+        allowed_tables: Iterable[str] | None = None,
+    ) -> str:
         """规范化并验证 SQL，返回可交给数据库的只读单语句。"""
 
         sql = raw_sql.strip()
@@ -92,4 +102,50 @@ class SQLGuard:
             raise SQLSafetyError("SQL 包含文件写入或锁定操作")
         if self._system_schemas.search(structural_sql):
             raise SQLSafetyError("SQL 不允许访问系统 Schema")
+        self._validate_table_scope(sql, allowed_tables)
         return sql
+
+    def _validate_table_scope(
+        self, sql: str, allowed_tables: Iterable[str] | None
+    ) -> None:
+        try:
+            expression = parse_one(sql, read="mysql")
+        except ParseError as exc:
+            raise SQLSafetyError(f"SQL AST 解析失败：{exc}") from exc
+
+        if allowed_tables is None:
+            return
+
+        allowed = {table.casefold() for table in allowed_tables}
+        cte_names = {
+            cte.alias_or_name.casefold()
+            for cte in expression.find_all(exp.CTE)
+            if cte.alias_or_name
+        }
+        unauthorized: set[str] = set()
+        for table in expression.find_all(exp.Table):
+            table_name = table.name
+            if (
+                table_name.casefold() in cte_names
+                and not table.db
+                and not table.catalog
+            ):
+                continue
+
+            qualified_name = ".".join(
+                part for part in (table.catalog, table.db, table_name) if part
+            )
+            schema_allowed = not table.catalog and (
+                not table.db
+                or (
+                    self.allowed_schema is not None
+                    and table.db.casefold() == self.allowed_schema.casefold()
+                )
+            )
+            if not schema_allowed or table_name.casefold() not in allowed:
+                unauthorized.add(qualified_name)
+
+        if unauthorized:
+            raise SQLSafetyError(
+                "SQL 引用了授权范围之外的表：" + ", ".join(sorted(unauthorized))
+            )

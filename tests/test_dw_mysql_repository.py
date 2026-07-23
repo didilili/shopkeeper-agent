@@ -71,6 +71,21 @@ def test_run_rechecks_guard_and_never_executes_unsafe_sql() -> None:
     assert session.executed == []
 
 
+def test_run_never_executes_table_outside_query_scope() -> None:
+    session = FakeSession()
+    repository = DWMySQLRepository(session, execution_config())
+
+    with pytest.raises(SQLSafetyError, match="dim_customer"):
+        asyncio.run(
+            repository.run(
+                "SELECT * FROM dim_customer",
+                allowed_tables={"fact_order"},
+            )
+        )
+
+    assert session.executed == []
+
+
 def test_run_truncates_rows_at_configured_limit() -> None:
     session = FakeSession([{"id": 1}, {"id": 2}, {"id": 3}])
     repository = DWMySQLRepository(session, execution_config(max_result_rows=2))

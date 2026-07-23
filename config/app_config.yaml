@@ -86,3 +86,9 @@ sql_execution:
   max_result_rows: ${oc.env:SQL_MAX_RESULT_ROWS,1000}
   query_timeout_seconds: ${oc.env:SQL_QUERY_TIMEOUT_SECONDS,30}
   max_correction_attempts: ${oc.env:SQL_MAX_CORRECTION_ATTEMPTS,2}
+
+api_access:
+  enabled: ${oc.env:API_AUTH_ENABLED,false}
+  api_key: ${oc.env:API_AUTH_KEY,''}
+  rate_limit_requests: ${oc.env:API_RATE_LIMIT_REQUESTS,60}
+  rate_limit_window_seconds: ${oc.env:API_RATE_LIMIT_WINDOW_SECONDS,60}

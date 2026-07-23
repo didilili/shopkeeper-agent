@@ -43,3 +43,47 @@ def test_guard_rejects_high_risk_sql(guard: SQLGuard, sql: str) -> None:
 def test_guard_rejects_overlong_sql(guard: SQLGuard) -> None:
     with pytest.raises(SQLSafetyError, match="长度超过限制"):
         guard.validate("SELECT " + "x" * 200)
+
+
+def test_guard_allows_only_tables_in_query_scope() -> None:
+    guard = SQLGuard(max_sql_length=500, allowed_schema="dw_test")
+
+    sql = (
+        "SELECT f.order_id FROM dw_test.fact_order f "
+        "JOIN dim_date d ON f.date_id = d.date_id"
+    )
+
+    assert (
+        guard.validate(
+            sql,
+            allowed_tables={"fact_order", "dim_date"},
+        )
+        == sql
+    )
+
+
+def test_guard_rejects_unauthorized_join_table() -> None:
+    guard = SQLGuard(max_sql_length=500, allowed_schema="dw_test")
+
+    with pytest.raises(SQLSafetyError, match="dim_customer"):
+        guard.validate(
+            "SELECT * FROM fact_order JOIN dim_customer USING (customer_id)",
+            allowed_tables={"fact_order"},
+        )
+
+
+def test_guard_excludes_cte_aliases_from_real_table_scope() -> None:
+    guard = SQLGuard(max_sql_length=500, allowed_schema="dw_test")
+    sql = "WITH recent AS (SELECT order_id FROM fact_order) SELECT order_id FROM recent"
+
+    assert guard.validate(sql, allowed_tables={"fact_order"}) == sql
+
+
+def test_guard_rejects_other_schema_even_when_table_name_matches() -> None:
+    guard = SQLGuard(max_sql_length=500, allowed_schema="dw_test")
+
+    with pytest.raises(SQLSafetyError, match="other.fact_order"):
+        guard.validate(
+            "SELECT * FROM other.fact_order",
+            allowed_tables={"fact_order"},
+        )

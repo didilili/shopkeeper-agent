@@ -13,6 +13,7 @@ from starlette.responses import StreamingResponse
 
 from app.api.dependencies import get_query_service
 from app.api.schemas.query_schema import QuerySchema
+from app.api.security import AccessPrincipal, require_query_access
 from app.services.query_service import QueryService
 
 # 当前模块只维护查询相关接口，避免后续所有 API 都挤在 app/main.py 中
@@ -26,6 +27,7 @@ async def query_handler(
     query: QuerySchema,
     # 服务依赖：FastAPI 会调用 get_query_service，递归组装它所需的仓储和客户端
     query_service: Annotated[QueryService, Depends(get_query_service)],
+    _principal: Annotated[AccessPrincipal, Depends(require_query_access)],
 ):
     """接收用户自然语言问题，并流式返回 LangGraph 工作流输出"""
 

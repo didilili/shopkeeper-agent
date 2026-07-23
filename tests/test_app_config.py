@@ -16,6 +16,8 @@ def test_test_environment_uses_isolated_databases() -> None:
     assert config.retrieval.max_queries == 12
     assert config.sql_execution.max_result_rows == 1000
     assert config.sql_execution.max_correction_attempts == 2
+    assert config.api_access.enabled is False
+    assert config.api_access.rate_limit_requests == 60
 
 
 def test_secret_values_are_masked() -> None:
@@ -52,8 +54,20 @@ def test_production_accepts_injected_secrets(
 ) -> None:
     monkeypatch.setenv("DB_META_PASSWORD", "production-meta-secret")
     monkeypatch.setenv("DB_DW_PASSWORD", "production-dw-secret")
+    monkeypatch.setenv("API_AUTH_ENABLED", "true")
+    monkeypatch.setenv("API_AUTH_KEY", "production-api-key-with-32-characters")
 
     config = load_app_config("production")
 
     assert config.runtime.environment == "production"
     assert config.runtime.debug is False
+    assert config.api_access.enabled is True
+
+
+def test_production_requires_api_auth(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DB_META_PASSWORD", "production-meta-secret")
+    monkeypatch.setenv("DB_DW_PASSWORD", "production-dw-secret")
+    monkeypatch.setenv("API_AUTH_ENABLED", "false")
+
+    with pytest.raises(ConfigurationError, match="API_AUTH_ENABLED"):
+        load_app_config("production")

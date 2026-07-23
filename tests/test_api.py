@@ -3,6 +3,8 @@
 from fastapi.testclient import TestClient
 
 from app.api.dependencies import get_query_service
+from app.api.security import InMemoryRateLimiter, query_access_controller
+from app.config.app_config import APIAccessConfig
 from app.main import create_app
 
 
@@ -81,3 +83,34 @@ def test_query_validation_errors_still_include_request_id() -> None:
 
     assert response.status_code == 422
     assert response.headers["X-Request-ID"] == "validation-request"
+
+
+def test_query_requires_configured_api_key_but_health_remains_public(
+    monkeypatch,
+) -> None:
+    api_key = "a" * 32
+    access_config = APIAccessConfig(
+        enabled=True,
+        api_key=api_key,
+        rate_limit_requests=10,
+        rate_limit_window_seconds=60,
+    )
+    monkeypatch.setattr(query_access_controller, "config", access_config)
+    monkeypatch.setattr(
+        query_access_controller,
+        "rate_limiter",
+        InMemoryRateLimiter(requests=10, window_seconds=60),
+    )
+    client, _ = make_client()
+
+    unauthorized = client.post("/api/query", json={"query": "查询销售额"})
+    authorized = client.post(
+        "/api/query",
+        json={"query": "查询销售额"},
+        headers={"X-API-Key": api_key},
+    )
+    health = client.get("/api/health/live")
+
+    assert unauthorized.status_code == 401
+    assert authorized.status_code == 200
+    assert health.status_code == 200

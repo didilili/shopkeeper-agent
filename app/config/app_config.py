@@ -126,6 +126,19 @@ class SQLExecutionConfig(FrozenConfigModel):
     max_correction_attempts: int = Field(ge=0, le=3)
 
 
+class APIAccessConfig(FrozenConfigModel):
+    enabled: bool = False
+    api_key: SecretStr = SecretStr("")
+    rate_limit_requests: int = Field(gt=0, le=10_000)
+    rate_limit_window_seconds: int = Field(gt=0, le=3600)
+
+    @model_validator(mode="after")
+    def validate_api_key(self) -> Self:
+        if self.enabled and len(self.api_key.get_secret_value()) < 32:
+            raise ValueError("启用 API 认证时，API_AUTH_KEY 至少需要 32 个字符")
+        return self
+
+
 class AppConfig(FrozenConfigModel):
     runtime: RuntimeConfig
     logging: LoggingConfig
@@ -136,6 +149,7 @@ class AppConfig(FrozenConfigModel):
     es: ESConfig
     retrieval: RetrievalConfig
     sql_execution: SQLExecutionConfig
+    api_access: APIAccessConfig
 
     @model_validator(mode="after")
     def validate_environment_policy(self) -> Self:
@@ -160,6 +174,8 @@ class AppConfig(FrozenConfigModel):
                 )
             if self.runtime.debug:
                 raise ValueError("生产环境必须关闭 runtime.debug")
+            if not self.api_access.enabled:
+                raise ValueError("生产环境必须启用 API_AUTH_ENABLED")
         return self
 
 

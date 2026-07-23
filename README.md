@@ -192,6 +192,19 @@ APP_ENV=development
 LLM_API_KEY=your_real_api_key
 ```
 
+本地开发默认关闭查询接口认证。生产环境必须启用 API Key，并设置至少 32
+字符的随机密钥：
+
+```bash
+API_AUTH_ENABLED=true
+API_AUTH_KEY=replace_with_a_random_secret_of_at_least_32_chars
+API_RATE_LIMIT_REQUESTS=60
+API_RATE_LIMIT_WINDOW_SECONDS=60
+```
+
+调用 `POST /api/query` 时通过 `X-API-Key` 请求头传入密钥。存活和就绪检查保持
+匿名访问，便于容器编排平台探测。
+
 基础设施配置按运行环境区分；模型配置独立采用
 `Profile -> Deployment -> Adapter` 结构。业务节点只依赖稳定的
 `sql_agent` 模型角色：
@@ -222,13 +235,15 @@ deployments:
 保留在排序过程和日志中。设计与调参说明见
 [`docs/召回与重排序模块说明.md`](docs/召回与重排序模块说明.md)。
 
-Agent 生成和修正的 SQL 会在数据库边界再次经过只读安全审计，并通过有限
-修正循环重新执行 `EXPLAIN` 校验；查询等待时间、SQL 长度和结果行数均可配置。
+Agent 生成和修正的 SQL 会在数据库边界再次经过只读安全审计和 AST 表级授权，
+只允许访问本轮元数据上下文已经提供的表，并通过有限修正循环重新执行
+`EXPLAIN` 校验；查询等待时间、SQL 长度和结果行数均可配置。
 设计边界见
 [`docs/SQL安全执行模块说明.md`](docs/SQL安全执行模块说明.md)。
 
-API 层会为每个请求生成或透传 `X-Request-ID`，对 SSE 异常进行脱敏，并提供
-存活与资源初始化状态端点。接口语义和 CI 门禁见
+API 层会为每个请求生成或透传 `X-Request-ID`，对查询接口实施可配置 API Key
+认证和单进程固定窗口限流，对 SSE 异常进行脱敏，并提供存活与资源初始化状态
+端点。接口语义和 CI 门禁见
 [`docs/API交付层说明.md`](docs/API交付层说明.md)。
 
 ### 5. 准备 Embedding 模型
@@ -363,8 +378,8 @@ git checkout main
 
 - 用户登录、角色权限和数据权限控制
 - 多租户隔离
-- 完整的 SQL AST 审计、表级执行白名单和数据库代理治理
-- 查询缓存、限流和性能治理
+- 数据库代理审计、行列级权限和查询成本治理
+- 分布式限流、查询缓存和跨实例性能治理
 - 大规模生产评测集、人工标注平台和线上反馈闭环
 - 监控告警、链路追踪平台和灰度发布
 - 更复杂的多轮问数记忆、追问改写和会话管理

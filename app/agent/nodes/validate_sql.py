@@ -23,13 +23,14 @@ async def validate_sql(state: DataAgentState, runtime: Runtime[DataAgentContext]
     try:
         # 读取 generate_sql 或 correct_sql 写入状态的候选 SQL
         sql = state["sql"]
+        allowed_tables = {table["name"] for table in state["table_infos"]}
 
         # SQL 可用性必须交给真实数仓判断，这里从运行时上下文取 DW Repository
         dw_mysql_repository: DWMySQLRepository = runtime.context["dw_mysql_repository"]
 
         try:
             # validate 内部使用 explain <sql>，只关心数据库能否成功解析这条 SQL
-            await dw_mysql_repository.validate(sql)
+            await dw_mysql_repository.validate(sql, allowed_tables=allowed_tables)
             writer({"type": "progress", "step": step, "status": "success"})
             logger.info("SQL语法正确")
             return {"error": None}
