@@ -10,7 +10,7 @@ from langgraph.runtime import Runtime
 
 from app.agent.context import DataAgentContext
 from app.agent.state import DataAgentState, MetricInfoState
-from app.core.log import logger
+from app.observability.logging import audit_event, log_failure
 from app.prompt.factory import build_prompt_chain
 from app.prompt.validators import validate_name_selection
 
@@ -43,14 +43,17 @@ async def filter_metric(state: DataAgentState, runtime: Runtime[DataAgentContext
             metric_info for metric_info in metric_infos if metric_info["name"] in result
         ]
 
-        logger.info(
-            f"过滤后的指标信息：{[filtered_metric_info['name'] for filtered_metric_info in filtered_metric_infos]}"
+        audit_event(
+            "context_filtered",
+            component="agent",
+            operation="filter_metric",
+            selected_count=len(filtered_metric_infos),
         )
 
         writer({"type": "progress", "step": step, "status": "success"})
         return {"metric_infos": filtered_metric_infos}
 
     except Exception as e:
-        logger.error(f"{step} failed: {e}")
+        log_failure("agent", "filter_metric", e)
         writer({"type": "progress", "step": step, "status": "error"})
         raise

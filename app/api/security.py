@@ -11,6 +11,7 @@ from fastapi import HTTPException, Request, Security, status
 from fastapi.security import APIKeyHeader
 
 from app.config.app_config import APIAccessConfig, app_config
+from app.observability.metrics import ACCESS_REJECTIONS
 
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
@@ -52,6 +53,11 @@ class InMemoryRateLimiter:
                 self._windows[identity] = _RateWindow(started_at=now, count=1)
                 return
             if window.count >= self.requests:
+                if (
+                    app_config.observability.enabled
+                    and app_config.observability.metrics_enabled
+                ):
+                    ACCESS_REJECTIONS.labels("rate_limit").inc()
                 retry_after = max(
                     1,
                     math.ceil(self.window_seconds - (now - window.started_at)),
@@ -80,6 +86,11 @@ class QueryAccessController:
             if not provided_api_key or not secrets.compare_digest(
                 provided_api_key, expected
             ):
+                if (
+                    app_config.observability.enabled
+                    and app_config.observability.metrics_enabled
+                ):
+                    ACCESS_REJECTIONS.labels("authentication").inc()
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="缺少或无效的 API Key。",

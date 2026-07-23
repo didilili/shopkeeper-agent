@@ -14,6 +14,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.app_config import SQLExecutionConfig, app_config
 from app.core.log import logger
+from app.observability.instrumentation import observe_external
+from app.observability.metrics import SQL_RESULT_ROWS
 from app.security.sql_guard import SQLGuard
 
 
@@ -62,8 +64,9 @@ class DWMySQLRepository:
         """先执行安全审计，再用 EXPLAIN 检查语法、表名和字段名。"""
 
         guarded_sql = self.sql_guard.validate(sql, allowed_tables=allowed_tables)
-        async with asyncio.timeout(self.execution_config.query_timeout_seconds):
-            await self.session.execute(text(f"explain {guarded_sql}"))
+        async with observe_external("dw_mysql", "validate_sql"):
+            async with asyncio.timeout(self.execution_config.query_timeout_seconds):
+                await self.session.execute(text(f"explain {guarded_sql}"))
 
     async def run(
         self, sql: str, *, allowed_tables: set[str] | None = None
@@ -71,8 +74,9 @@ class DWMySQLRepository:
         """再次执行安全审计，并限制等待时间和返回到应用层的数据量。"""
 
         guarded_sql = self.sql_guard.validate(sql, allowed_tables=allowed_tables)
-        async with asyncio.timeout(self.execution_config.query_timeout_seconds):
-            result = await self.session.execute(text(guarded_sql))
+        async with observe_external("dw_mysql", "run_sql"):
+            async with asyncio.timeout(self.execution_config.query_timeout_seconds):
+                result = await self.session.execute(text(guarded_sql))
 
         rows = result.mappings().fetchmany(self.execution_config.max_result_rows + 1)
         if len(rows) > self.execution_config.max_result_rows:
@@ -81,4 +85,9 @@ class DWMySQLRepository:
                 self.execution_config.max_result_rows,
             )
             rows = rows[: self.execution_config.max_result_rows]
+        if (
+            app_config.observability.enabled
+            and app_config.observability.metrics_enabled
+        ):
+            SQL_RESULT_ROWS.observe(len(rows))
         return [dict(row) for row in rows]

@@ -9,6 +9,7 @@ from langchain_huggingface import HuggingFaceEndpointEmbeddings
 
 from app.config.app_config import EmbeddingConfig, app_config
 from app.core.log import logger
+from app.observability.instrumentation import observe_external
 
 
 class EmbeddingContractError(RuntimeError):
@@ -40,8 +41,9 @@ class EmbeddingClient:
         embeddings: list[list[float]] = []
         for offset in range(0, len(texts), self.batch_size):
             batch = texts[offset : offset + self.batch_size]
-            async with asyncio.timeout(self.timeout):
-                batch_embeddings = await self.endpoint.aembed_documents(batch)
+            async with observe_external("embedding", "embed_documents"):
+                async with asyncio.timeout(self.timeout):
+                    batch_embeddings = await self.endpoint.aembed_documents(batch)
             self._validate_batch(batch, batch_embeddings)
             embeddings.extend(batch_embeddings)
         return embeddings

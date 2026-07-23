@@ -5,6 +5,7 @@ runtime:
   debug: false
 
 logging:
+  structured: ${oc.env:LOG_STRUCTURED,false}
   file:
     enable: true
     level: ${oc.env:LOG_FILE_LEVEL,INFO}
@@ -93,3 +94,11 @@ api_access:
   api_key: ${oc.env:API_AUTH_KEY,''}
   rate_limit_requests: ${oc.env:API_RATE_LIMIT_REQUESTS,60}
   rate_limit_window_seconds: ${oc.env:API_RATE_LIMIT_WINDOW_SECONDS,60}
+
+observability:
+  enabled: ${oc.env:OBSERVABILITY_ENABLED,true}
+  metrics_enabled: ${oc.env:METRICS_ENABLED,true}
+  diagnostics_enabled: ${oc.env:DIAGNOSTICS_ENABLED,true}
+  health_timeout_seconds: ${oc.env:HEALTH_TIMEOUT_SECONDS,3}
+  health_cache_ttl_seconds: ${oc.env:HEALTH_CACHE_TTL_SECONDS,10}
+  slow_query_threshold_seconds: ${oc.env:SLOW_QUERY_THRESHOLD_SECONDS,10}

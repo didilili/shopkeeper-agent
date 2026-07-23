@@ -29,9 +29,8 @@ async def lifespan(app: FastAPI):
     try:
         qdrant_client_manager.init()
         initialized.append(qdrant_client_manager)
-        embedding_client = embedding_client_manager.init()
+        embedding_client_manager.init()
         initialized.append(embedding_client_manager)
-        await embedding_client.aembed_query("服务启动检查")
         es_client_manager.init()
         initialized.append(es_client_manager)
         meta_mysql_client_manager.init()

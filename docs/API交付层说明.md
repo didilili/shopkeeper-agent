@@ -57,9 +57,9 @@ data: {"type":"error","message":"查询处理失败，请使用 request_id 联�
 - `GET /api/health/ready`：应用生命周期已完成客户端和连接池初始化时返回 200，
   未完成或正在关闭时返回 503。
 
-应用启动时会执行一次最小 Embedding 向量化探测，通过后才进入 `ready`。该状态
-仍不是对 MySQL、Qdrant、Elasticsearch 和 Embedding 服务的持续深度探测；
-外部依赖 SLA 应由独立监控或后续诊断端点负责。
+`ready` 会读取带超时和 TTL 缓存的动态依赖探测结果。详细的 MySQL、Qdrant、
+Elasticsearch 和 Embedding 状态只通过受保护的 `/api/diagnostics` 返回，
+避免公开健康端点泄露内部拓扑。
 
 ## 6. 生命周期与测试
 
@@ -73,7 +73,7 @@ data: {"type":"error","message":"查询处理失败，请使用 request_id 联�
 
 `.github/workflows/ci.yml` 包含两个独立任务：
 
-- backend：Ruff、格式、108 个测试、Prompt 离线评测、召回评测集校验；
+- backend：Ruff、格式、116 个测试、Prompt 离线评测、召回评测集校验；
 - frontend：锁文件安装、TypeScript 检查和 Vite 生产构建。
 
 外部服务在线评测不进入默认 PR 门禁，避免 CI 依赖生产密钥和长生命周期服务。

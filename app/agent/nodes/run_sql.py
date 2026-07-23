@@ -9,7 +9,7 @@ from langgraph.runtime import Runtime
 
 from app.agent.context import DataAgentContext
 from app.agent.state import DataAgentState
-from app.core.log import logger
+from app.observability.logging import audit_event, log_failure, sql_fingerprint
 
 
 async def run_sql(state: DataAgentState, runtime: Runtime[DataAgentContext]):
@@ -30,11 +30,17 @@ async def run_sql(state: DataAgentState, runtime: Runtime[DataAgentContext]):
             sql,
             allowed_tables=allowed_tables,
         )
-        logger.info(f"SQL执行结果：{result}")
+        audit_event(
+            "sql_executed",
+            component="sql",
+            operation="run",
+            sql_fingerprint=sql_fingerprint(sql),
+            row_count=len(result),
+        )
         writer({"type": "progress", "step": step, "status": "success"})
         writer({"type": "result", "data": result})
 
     except Exception as e:
-        logger.error(f"{step} failed: {e}")
+        log_failure("agent", "run_sql", e)
         writer({"type": "progress", "step": step, "status": "error"})
         raise

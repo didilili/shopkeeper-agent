@@ -12,6 +12,7 @@ from dataclasses import asdict
 from elasticsearch import AsyncElasticsearch
 
 from app.entities.value_info import ValueInfo
+from app.observability.instrumentation import observe_external
 from app.retrieval.schemas import SearchHit
 
 
@@ -64,14 +65,15 @@ class ValueESRepository:
     ) -> list[SearchHit[ValueInfo]]:
         """按关键词全文检索字段取值，并保留 Elasticsearch 分数。"""
 
-        resp = await self.client.search(
-            index=self.index_name,
-            # value 字段启用了 IK 分词，match 查询可以处理中文短语和枚举值匹配
-            query={"match": {"value": keyword}},
-            size=limit,
-            # 过滤掉相关度过低的命中，避免把明显无关的取值带入后续上下文
-            min_score=score_threshold,
-        )
+        async with observe_external("elasticsearch", "search_value"):
+            resp = await self.client.search(
+                index=self.index_name,
+                # value 字段启用了 IK 分词，match 查询可以处理中文短语和枚举值匹配
+                query={"match": {"value": keyword}},
+                size=limit,
+                # 过滤掉相关度过低的命中，避免把明显无关的取值带入后续上下文
+                min_score=score_threshold,
+            )
         return [
             SearchHit(
                 item=ValueInfo(**hit["_source"]),

@@ -36,6 +36,7 @@ from app.clients.mysql_client_manager import (
 )
 from app.clients.qdrant_client_manager import qdrant_client_manager
 from app.config.app_config import app_config
+from app.observability.instrumentation import observe_agent_node
 from app.repositories.es.value_es_repository import ValueESRepository
 from app.repositories.mysql.dw.dw_mysql_repository import DWMySQLRepository
 from app.repositories.mysql.meta.meta_mysql_repository import MetaMySQLRepository
@@ -46,19 +47,25 @@ from app.repositories.qdrant.metric_qdrant_repository import MetricQdrantReposit
 graph_builder = StateGraph(state_schema=DataAgentState, context_schema=DataAgentContext)
 
 # 注册节点：每个节点负责问数链路中的一个清晰步骤
-graph_builder.add_node("extract_keywords", extract_keywords)
-graph_builder.add_node("recall_column", recall_column)
-graph_builder.add_node("recall_value", recall_value)
-graph_builder.add_node("recall_metric", recall_metric)
-graph_builder.add_node("merge_retrieved_info", merge_retrieved_info)
-graph_builder.add_node("filter_metric", filter_metric)
-graph_builder.add_node("filter_table", filter_table)
-graph_builder.add_node("add_extra_context", add_extra_context)
-graph_builder.add_node("generate_sql", generate_sql)
-graph_builder.add_node("validate_sql", validate_sql)
-graph_builder.add_node("correct_sql", correct_sql)
-graph_builder.add_node("reject_sql", reject_sql)
-graph_builder.add_node("run_sql", run_sql)
+for node_name, node_function in {
+    "extract_keywords": extract_keywords,
+    "recall_column": recall_column,
+    "recall_value": recall_value,
+    "recall_metric": recall_metric,
+    "merge_retrieved_info": merge_retrieved_info,
+    "filter_metric": filter_metric,
+    "filter_table": filter_table,
+    "add_extra_context": add_extra_context,
+    "generate_sql": generate_sql,
+    "validate_sql": validate_sql,
+    "correct_sql": correct_sql,
+    "reject_sql": reject_sql,
+    "run_sql": run_sql,
+}.items():
+    graph_builder.add_node(
+        node_name,
+        observe_agent_node(node_name, node_function),
+    )
 
 # 从用户问题开始，先抽取关键词作为后续检索的基础
 graph_builder.add_edge(START, "extract_keywords")

@@ -1239,6 +1239,15 @@ wheels = [
 ]
 
 [[package]]
+name = "prometheus-client"
+version = "0.25.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/1b/fb/d9aa83ffe43ce1f19e557c0971d04b90561b0cfd50762aafb01968285553/prometheus_client-0.25.0.tar.gz", hash = "sha256:5e373b75c31afb3c86f1a52fa1ad470c9aace18082d39ec0d2f918d11cc9ba28", size = 86035, upload-time = "2026-04-09T19:53:42.359Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8d/9b/d4b1e644385499c8346fa9b622a3f030dce14cd6ef8a1871c221a17a67e7/prometheus_client-0.25.0-py3-none-any.whl", hash = "sha256:d5aec89e349a6ec230805d0df882f3807f74fd6c1a2fa86864e3c2279059fed1", size = 64154, upload-time = "2026-04-09T19:53:41.324Z" },
+]
+
+[[package]]
 name = "propcache"
 version = "0.4.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1700,6 +1709,7 @@ dependencies = [
     { name = "elasticsearch", extra = ["async"] },
     { name = "fastapi", extra = ["standard"] },
     { name = "greenlet" },
+    { name = "httpx" },
     { name = "huggingface-hub" },
     { name = "jieba" },
     { name = "langchain" },
@@ -1708,6 +1718,7 @@ dependencies = [
     { name = "langgraph" },
     { name = "loguru" },
     { name = "omegaconf" },
+    { name = "prometheus-client" },
     { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
@@ -1730,6 +1741,7 @@ requires-dist = [
     { name = "elasticsearch", extras = ["async"], specifier = ">=8,<9" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.135.3" },
     { name = "greenlet", specifier = ">=3.4.0" },
+    { name = "httpx", specifier = ">=0.28,<1" },
     { name = "huggingface-hub", specifier = ">=1.10.1" },
     { name = "jieba", specifier = ">=0.42.1" },
     { name = "langchain", specifier = ">=1.2.15" },
@@ -1738,6 +1750,7 @@ requires-dist = [
     { name = "langgraph", specifier = ">=1.1.6" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "omegaconf", specifier = ">=2.3.0" },
+    { name = "prometheus-client", specifier = ">=0.23,<1" },
     { name = "pydantic", specifier = ">=2.12.0" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "pyyaml", specifier = ">=6.0.3" },

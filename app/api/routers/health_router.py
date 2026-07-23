@@ -4,6 +4,7 @@ from fastapi import APIRouter, Request, Response, status
 
 from app.api.schemas.health_schema import HealthResponse
 from app.config.app_config import app_config
+from app.observability.health import dependency_health_service
 
 health_router = APIRouter(prefix="/api/health", tags=["health"])
 
@@ -24,6 +25,9 @@ async def readiness(request: Request, response: Response) -> HealthResponse:
     """报告应用级资源是否完成生命周期初始化。"""
 
     ready = bool(getattr(request.app.state, "ready", False))
+    if ready and app_config.observability.enabled:
+        snapshot = await dependency_health_service.check()
+        ready = snapshot.status == "healthy"
     if not ready:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     return HealthResponse(

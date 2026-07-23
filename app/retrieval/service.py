@@ -43,21 +43,12 @@ def _successful_query_results(
 
     if failures:
         logger.warning(
-            "召回子查询失败：{}",
-            [
-                {
-                    "query": query,
-                    "error_type": type(error).__name__,
-                    "error": str(error),
-                }
-                for query, error in failures
-            ],
+            "召回子查询失败：failure_count={}, error_types={}",
+            len(failures),
+            sorted({type(error).__name__ for _, error in failures}),
         )
     if not successful:
-        failed_queries = ", ".join(repr(query) for query, _ in failures)
-        raise RetrievalError(f"全部召回子查询失败：{failed_queries}") from failures[0][
-            1
-        ]
+        raise RetrievalError("全部召回子查询失败") from failures[0][1]
     return successful
 
 

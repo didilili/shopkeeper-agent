@@ -8,6 +8,7 @@
 
 import asyncio
 import json
+import time
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -15,8 +16,11 @@ from app.agent.context import DataAgentContext
 from app.agent.graph import graph
 from app.agent.state import DataAgentState
 from app.clients.embedding_client_manager import EmbeddingClient
+from app.config.app_config import app_config
 from app.core.context import request_id_ctx_var
-from app.core.log import logger
+from app.observability.errors import classify_error
+from app.observability.logging import audit_event
+from app.observability.metrics import QUERY_STREAM_DURATION, QUERY_STREAMS
 from app.repositories.es.value_es_repository import ValueESRepository
 from app.repositories.mysql.dw.dw_mysql_repository import DWMySQLRepository
 from app.repositories.mysql.meta.meta_mysql_repository import MetaMySQLRepository
@@ -66,6 +70,9 @@ class QueryService:
             meta_mysql_repository=self.meta_mysql_repository,
             dw_mysql_repository=self.dw_mysql_repository,
         )
+        started = time.perf_counter()
+        outcome = "success"
+        error_category = "none"
         try:
             # stream_mode="custom" 对应节点内部 writer(...) 写出的进度消息
             async for chunk in self.agent_graph.astream(
@@ -75,10 +82,27 @@ class QueryService:
                 # ensure_ascii=False 保留中文进度文案，default=str 兜底处理日期等非 JSON 类型
                 yield _encode_sse(chunk)
         except asyncio.CancelledError:
-            logger.info("客户端取消问数请求")
+            outcome = "cancelled"
+            error_category = "cancelled"
+            audit_event(
+                "query_stream_cancelled",
+                component="query",
+                operation="stream",
+                outcome=outcome,
+            )
             raise
-        except Exception:
-            logger.exception("问数工作流执行失败")
+        except Exception as error:
+            outcome = "error"
+            error_category = classify_error(error)
+            audit_event(
+                "query_stream_failed",
+                level="ERROR",
+                component="query",
+                operation="stream",
+                outcome=outcome,
+                error_category=error_category,
+                error_type=type(error).__name__,
+            )
             error = {
                 "type": "error",
                 "message": "查询处理失败，请使用 request_id 联系管理员。",
@@ -86,6 +110,23 @@ class QueryService:
             }
             yield _encode_sse(error)
         finally:
+            duration = time.perf_counter() - started
+            if (
+                app_config.observability.enabled
+                and app_config.observability.metrics_enabled
+            ):
+                QUERY_STREAMS.labels(outcome, error_category).inc()
+                QUERY_STREAM_DURATION.labels(outcome).observe(duration)
+                audit_event(
+                    "query_stream_completed",
+                    component="query",
+                    operation="stream",
+                    outcome=outcome,
+                    error_category=error_category,
+                    duration_ms=round(duration * 1000, 3),
+                    slow=duration
+                    >= app_config.observability.slow_query_threshold_seconds,
+                )
             request_id_ctx_var.reset(token)
 
 

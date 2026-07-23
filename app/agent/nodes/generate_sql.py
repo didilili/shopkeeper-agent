@@ -10,7 +10,7 @@ from langgraph.runtime import Runtime
 
 from app.agent.context import DataAgentContext
 from app.agent.state import DataAgentState
-from app.core.log import logger
+from app.observability.logging import audit_event, log_failure, sql_fingerprint
 from app.prompt.factory import build_prompt_chain
 
 
@@ -45,11 +45,17 @@ async def generate_sql(state: DataAgentState, runtime: Runtime[DataAgentContext]
                 "query": query,
             }
         )
-        logger.info(f"生成的SQL：{result}")
+        audit_event(
+            "sql_generated",
+            component="sql",
+            operation="generate",
+            sql_fingerprint=sql_fingerprint(result),
+            sql_length=len(result),
+        )
         writer({"type": "progress", "step": step, "status": "success"})
         return {"sql": result, "correction_attempts": 0}
 
     except Exception as e:
-        logger.error(f"{step} failed: {e}")
+        log_failure("agent", "generate_sql", e)
         writer({"type": "progress", "step": step, "status": "error"})
         raise

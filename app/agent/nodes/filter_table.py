@@ -10,7 +10,7 @@ from langgraph.runtime import Runtime
 
 from app.agent.context import DataAgentContext
 from app.agent.state import DataAgentState, TableInfoState
-from app.core.log import logger
+from app.observability.logging import audit_event, log_failure
 from app.prompt.factory import build_prompt_chain
 from app.prompt.validators import validate_table_selection
 
@@ -53,13 +53,16 @@ async def filter_table(state: DataAgentState, runtime: Runtime[DataAgentContext]
                     }
                 )
 
-        logger.info(
-            f"过滤后的表信息：{[filtered_table_info['name'] for filtered_table_info in filtered_table_infos]}"
+        audit_event(
+            "context_filtered",
+            component="agent",
+            operation="filter_table",
+            selected_count=len(filtered_table_infos),
         )
         writer({"type": "progress", "step": step, "status": "success"})
         return {"table_infos": filtered_table_infos}
 
     except Exception as e:
-        logger.error(f"{step} failed: {e}")
+        log_failure("agent", "filter_table", e)
         writer({"type": "progress", "step": step, "status": "error"})
         raise

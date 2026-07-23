@@ -12,6 +12,7 @@ from qdrant_client.models import PointStruct
 
 from app.config.app_config import app_config
 from app.entities.metric_info import MetricInfo
+from app.observability.instrumentation import observe_external
 from app.repositories.qdrant.vector_contract import (
     ensure_vector_collection,
     recreate_vector_collection,
@@ -77,12 +78,13 @@ class MetricQdrantRepository:
     ) -> list[SearchHit[MetricInfo]]:
         """按向量相似度检索指标元数据，并保留底层相似度分数。"""
 
-        result = await self.client.query_points(
-            collection_name=self.collection_name,
-            query=embedding,
-            limit=limit,
-            score_threshold=score_threshold,
-        )
+        async with observe_external("qdrant", "search_metric"):
+            result = await self.client.query_points(
+                collection_name=self.collection_name,
+                query=embedding,
+                limit=limit,
+                score_threshold=score_threshold,
+            )
         return [
             SearchHit(
                 item=MetricInfo(**(point.payload or {})),

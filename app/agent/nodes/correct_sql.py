@@ -10,7 +10,9 @@ from langgraph.runtime import Runtime
 
 from app.agent.context import DataAgentContext
 from app.agent.state import DataAgentState
-from app.core.log import logger
+from app.config.app_config import app_config
+from app.observability.logging import audit_event, log_failure, sql_fingerprint
+from app.observability.metrics import SQL_CORRECTIONS
 from app.prompt.factory import build_prompt_chain
 
 
@@ -52,13 +54,29 @@ async def correct_sql(state: DataAgentState, runtime: Runtime[DataAgentContext])
             }
         )
 
-        logger.info(f"校正后的SQL：{result}")
+        if (
+            app_config.observability.enabled
+            and app_config.observability.metrics_enabled
+        ):
+            SQL_CORRECTIONS.labels("generated").inc()
+        audit_event(
+            "sql_corrected",
+            component="sql",
+            operation="correct",
+            sql_fingerprint=sql_fingerprint(result),
+            sql_length=len(result),
+        )
         writer({"type": "progress", "step": step, "status": "success"})
         return {
             "sql": result,
             "correction_attempts": state.get("correction_attempts", 0) + 1,
         }
     except Exception as e:
-        logger.error(f"{step} failed: {e}")
+        if (
+            app_config.observability.enabled
+            and app_config.observability.metrics_enabled
+        ):
+            SQL_CORRECTIONS.labels("error").inc()
+        log_failure("agent", "correct_sql", e)
         writer({"type": "progress", "step": step, "status": "error"})
         raise

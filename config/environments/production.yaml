@@ -3,6 +3,7 @@ runtime:
   debug: false
 
 logging:
+  structured: true
   file:
     enable: true
     level: INFO

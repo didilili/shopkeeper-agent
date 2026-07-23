@@ -56,6 +56,7 @@ class ConsoleLogConfig(FrozenConfigModel):
 class LoggingConfig(FrozenConfigModel):
     file: FileLogConfig
     console: ConsoleLogConfig
+    structured: bool = False
 
 
 class DBConfig(FrozenConfigModel):
@@ -140,6 +141,15 @@ class APIAccessConfig(FrozenConfigModel):
         return self
 
 
+class ObservabilityConfig(FrozenConfigModel):
+    enabled: bool = True
+    metrics_enabled: bool = True
+    diagnostics_enabled: bool = True
+    health_timeout_seconds: float = Field(gt=0, le=30)
+    health_cache_ttl_seconds: float = Field(gt=0, le=300)
+    slow_query_threshold_seconds: float = Field(gt=0, le=300)
+
+
 class AppConfig(FrozenConfigModel):
     runtime: RuntimeConfig
     logging: LoggingConfig
@@ -151,6 +161,7 @@ class AppConfig(FrozenConfigModel):
     retrieval: RetrievalConfig
     sql_execution: SQLExecutionConfig
     api_access: APIAccessConfig
+    observability: ObservabilityConfig
 
     @model_validator(mode="after")
     def validate_environment_policy(self) -> Self:

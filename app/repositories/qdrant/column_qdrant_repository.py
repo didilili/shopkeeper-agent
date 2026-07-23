@@ -12,6 +12,7 @@ from qdrant_client.http.models import PointStruct
 
 from app.config.app_config import app_config
 from app.entities.column_info import ColumnInfo
+from app.observability.instrumentation import observe_external
 from app.repositories.qdrant.vector_contract import (
     ensure_vector_collection,
     recreate_vector_collection,
@@ -76,12 +77,13 @@ class ColumnQdrantRepository:
         self, embedding: list[float], score_threshold: float = 0.6, limit: int = 20
     ) -> list[SearchHit[ColumnInfo]]:
         """按向量相似度检索字段元数据，并保留底层相似度分数。"""
-        result = await self.client.query_points(
-            collection_name=self.collection_name,
-            query=embedding,
-            limit=limit,
-            score_threshold=score_threshold,
-        )
+        async with observe_external("qdrant", "search_column"):
+            result = await self.client.query_points(
+                collection_name=self.collection_name,
+                query=embedding,
+                limit=limit,
+                score_threshold=score_threshold,
+            )
         return [
             SearchHit(
                 item=ColumnInfo(**(point.payload or {})),

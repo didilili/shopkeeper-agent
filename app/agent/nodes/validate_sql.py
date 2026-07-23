@@ -9,7 +9,8 @@ from langgraph.runtime import Runtime
 
 from app.agent.context import DataAgentContext
 from app.agent.state import DataAgentState
-from app.core.log import logger
+from app.observability.errors import classify_error
+from app.observability.logging import audit_event, log_failure, sql_fingerprint
 from app.repositories.mysql.dw.dw_mysql_repository import DWMySQLRepository
 
 
@@ -32,15 +33,29 @@ async def validate_sql(state: DataAgentState, runtime: Runtime[DataAgentContext]
             # validate 内部使用 explain <sql>，只关心数据库能否成功解析这条 SQL
             await dw_mysql_repository.validate(sql, allowed_tables=allowed_tables)
             writer({"type": "progress", "step": step, "status": "success"})
-            logger.info("SQL语法正确")
+            audit_event(
+                "sql_validated",
+                component="sql",
+                operation="validate",
+                outcome="success",
+                sql_fingerprint=sql_fingerprint(sql),
+            )
             return {"error": None}
         except Exception as e:
             # 不抛出异常中断图执行，而是把错误写入状态，供条件分支进入 correct_sql
-            logger.info(f"SQL语法错误：{str(e)}")
+            audit_event(
+                "sql_validated",
+                component="sql",
+                operation="validate",
+                outcome="error",
+                error_category=classify_error(e),
+                error_type=type(e).__name__,
+                sql_fingerprint=sql_fingerprint(sql),
+            )
             writer({"type": "progress", "step": step, "status": "success"})
             return {"error": str(e)}
 
     except Exception as e:
-        logger.error(f"{step} failed: {e}")
+        log_failure("agent", "validate_sql", e)
         writer({"type": "progress", "step": step, "status": "error"})
         raise

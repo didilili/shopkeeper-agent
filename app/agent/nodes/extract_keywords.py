@@ -10,7 +10,7 @@ from langgraph.runtime import Runtime
 
 from app.agent.context import DataAgentContext
 from app.agent.state import DataAgentState
-from app.core.log import logger
+from app.observability.logging import audit_event, log_failure
 
 
 async def extract_keywords(state: DataAgentState, runtime: Runtime[DataAgentContext]):
@@ -47,9 +47,14 @@ async def extract_keywords(state: DataAgentState, runtime: Runtime[DataAgentCont
         keywords = list(dict.fromkeys([*keywords, query]))
 
         writer({"type": "progress", "step": step, "status": "success"})
-        logger.info(f"抽取关键词成功: {keywords}")
+        audit_event(
+            "keywords_extracted",
+            component="agent",
+            operation="extract_keywords",
+            keyword_count=len(keywords),
+        )
         return {"keywords": keywords}
     except Exception as e:
-        logger.error(f"抽取关键词失败: {e}")
+        log_failure("agent", "extract_keywords", e)
         writer({"type": "progress", "step": step, "status": "error"})
         raise

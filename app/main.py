@@ -7,15 +7,18 @@ FastAPI 应用包入口
 """
 
 import re
+import time
 import uuid
 
 from fastapi import FastAPI, Request
 
 from app.api.lifespan import lifespan
 from app.api.routers.health_router import health_router
+from app.api.routers.observability_router import observability_router
 from app.api.routers.query_router import query_router
 from app.config.app_config import app_config
 from app.core.context import request_id_ctx_var
+from app.observability.metrics import HTTP_DURATION, HTTP_REQUESTS
 
 REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$")
 
@@ -37,18 +40,35 @@ def create_app(*, lifespan_handler=lifespan) -> FastAPI:
     )
     application.state.ready = False
     application.include_router(health_router)
+    application.include_router(observability_router)
     application.include_router(query_router)
 
     @application.middleware("http")
     async def add_request_id(request: Request, call_next):
+        started = time.perf_counter()
         request_id = _select_request_id(request)
         request.state.request_id = request_id
         token = request_id_ctx_var.set(request_id)
+        status_code = 500
         try:
             response = await call_next(request)
+            status_code = response.status_code
             response.headers["X-Request-ID"] = request_id
             return response
         finally:
+            if (
+                app_config.observability.enabled
+                and app_config.observability.metrics_enabled
+            ):
+                route = getattr(request.scope.get("route"), "path", "unmatched")
+                HTTP_REQUESTS.labels(
+                    request.method,
+                    route,
+                    f"{status_code // 100}xx",
+                ).inc()
+                HTTP_DURATION.labels(request.method, route).observe(
+                    time.perf_counter() - started
+                )
             request_id_ctx_var.reset(token)
 
     return application

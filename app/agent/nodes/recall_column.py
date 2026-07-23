@@ -11,8 +11,8 @@ from langgraph.runtime import Runtime
 from app.agent.context import DataAgentContext
 from app.agent.state import DataAgentState
 from app.config.app_config import app_config
-from app.core.log import logger
 from app.entities.column_info import ColumnInfo
+from app.observability.logging import audit_event, log_failure
 from app.prompt.factory import build_prompt_chain
 from app.retrieval.service import retrieve_vector_candidates
 
@@ -50,21 +50,16 @@ async def recall_column(state: DataAgentState, runtime: Runtime[DataAgentContext
         retrieved_column_infos: list[ColumnInfo] = [
             candidate.item for candidate in ranked_candidates
         ]
-        logger.info(
-            "字段融合排序：{}",
-            [
-                {
-                    "id": candidate.item.id,
-                    "score": round(candidate.score, 4),
-                    "queries": candidate.matched_queries,
-                }
-                for candidate in ranked_candidates
-            ],
+        audit_event(
+            "retrieval_completed",
+            component="retrieval",
+            operation="recall_column",
+            candidate_count=len(ranked_candidates),
         )
 
         writer({"type": "progress", "step": step, "status": "success"})
         return {"retrieved_column_infos": retrieved_column_infos}
     except Exception as e:
-        logger.error(f"{step} failed: {e}")
+        log_failure("agent", "recall_column", e)
         writer({"type": "progress", "step": step, "status": "error"})
         raise

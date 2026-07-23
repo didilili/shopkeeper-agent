@@ -11,8 +11,8 @@ from langgraph.runtime import Runtime
 from app.agent.context import DataAgentContext
 from app.agent.state import DataAgentState
 from app.config.app_config import app_config
-from app.core.log import logger
 from app.entities.metric_info import MetricInfo
+from app.observability.logging import audit_event, log_failure
 from app.prompt.factory import build_prompt_chain
 from app.retrieval.service import retrieve_vector_candidates
 
@@ -50,20 +50,15 @@ async def recall_metric(state: DataAgentState, runtime: Runtime[DataAgentContext
         retrieved_metric_infos: list[MetricInfo] = [
             candidate.item for candidate in ranked_candidates
         ]
-        logger.info(
-            "指标融合排序：{}",
-            [
-                {
-                    "id": candidate.item.id,
-                    "score": round(candidate.score, 4),
-                    "queries": candidate.matched_queries,
-                }
-                for candidate in ranked_candidates
-            ],
+        audit_event(
+            "retrieval_completed",
+            component="retrieval",
+            operation="recall_metric",
+            candidate_count=len(ranked_candidates),
         )
         writer({"type": "progress", "step": step, "status": "success"})
         return {"retrieved_metric_infos": retrieved_metric_infos}
     except Exception as e:
-        logger.error(f"{step} failed: {e}")
+        log_failure("agent", "recall_metric", e)
         writer({"type": "progress", "step": step, "status": "error"})
         raise

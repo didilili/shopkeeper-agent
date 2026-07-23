@@ -40,6 +40,7 @@ if app_config.logging.console.enable:
         sink=sys.stdout,
         level=app_config.logging.console.level,
         format=log_format,
+        serialize=app_config.logging.structured,
     )
 
 # 根据配置决定是否写入文件日志，并在启动时确保日志目录存在
@@ -53,4 +54,5 @@ if app_config.logging.file.enable:
         rotation=app_config.logging.file.rotation,
         retention=app_config.logging.file.retention,
         encoding="utf-8",
+        serialize=app_config.logging.structured,
     )

@@ -15,11 +15,11 @@ from app.agent.state import (
     MetricInfoState,
     TableInfoState,
 )
-from app.core.log import logger
 from app.entities.column_info import ColumnInfo
 from app.entities.metric_info import MetricInfo
 from app.entities.table_info import TableInfo
 from app.entities.value_info import ValueInfo
+from app.observability.logging import audit_event, log_failure
 
 
 async def merge_retrieved_info(
@@ -140,11 +140,12 @@ async def merge_retrieved_info(
             for retrieved_metric_info in retrieved_metric_infos
         ]
 
-        logger.info(
-            f"合并后的表信息：{[table_info['name'] for table_info in table_infos]}"
-        )
-        logger.info(
-            f"合并后的指标信息：{[metric_info['name'] for metric_info in metric_infos]}"
+        audit_event(
+            "retrieval_context_merged",
+            component="agent",
+            operation="merge_retrieved_info",
+            table_count=len(table_infos),
+            metric_count=len(metric_infos),
         )
 
         writer({"type": "progress", "step": step, "status": "success"})
@@ -153,6 +154,6 @@ async def merge_retrieved_info(
             "metric_infos": metric_infos,
         }
     except Exception as e:
-        logger.error(f"{step} failed: {e}")
+        log_failure("agent", "merge_retrieved_info", e)
         writer({"type": "progress", "step": step, "status": "error"})
         raise

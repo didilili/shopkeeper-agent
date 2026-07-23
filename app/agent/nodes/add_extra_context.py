@@ -11,7 +11,7 @@ from langgraph.runtime import Runtime
 
 from app.agent.context import DataAgentContext
 from app.agent.state import DataAgentState, DateInfoState, DBInfoState
-from app.core.log import logger
+from app.observability.logging import audit_event, log_failure
 
 
 async def add_extra_context(state: DataAgentState, runtime: Runtime[DataAgentContext]):
@@ -33,13 +33,17 @@ async def add_extra_context(state: DataAgentState, runtime: Runtime[DataAgentCon
         # 数据库方言和版本会影响函数名 日期运算 limit 语法等 SQL 细节
         db = await dw_mysql_repository.get_db_info()
         db_info = DBInfoState(**db)
-        logger.info(f"数据库信息：{db_info}")
-        logger.info(f"日期信息：{date_info}")
+        audit_event(
+            "context_enriched",
+            component="agent",
+            operation="add_extra_context",
+            dialect=db_info["dialect"],
+        )
 
         writer({"type": "progress", "step": step, "status": "success"})
         return {"date_info": date_info, "db_info": db_info}
 
     except Exception as e:
-        logger.error(f"{step} failed: {e}")
+        log_failure("agent", "add_extra_context", e)
         writer({"type": "progress", "step": step, "status": "error"})
         raise
