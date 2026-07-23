@@ -8,7 +8,7 @@ Repository 自身只关心“如何写入”，而“哪些写操作要放在同
 问数链路运行时也会从这里读取元数据，用来把召回到的 id 补齐成完整实体
 """
 
-from sqlalchemy import text
+from sqlalchemy import delete, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.entities.column_info import ColumnInfo
@@ -16,6 +16,8 @@ from app.entities.column_metric import ColumnMetric
 from app.entities.metric_info import MetricInfo
 from app.entities.table_info import TableInfo
 from app.models.column_info import ColumnInfoMySQL
+from app.models.column_metric import ColumnMetricMySQL
+from app.models.metric_info import MetricInfoMySQL
 from app.models.table_info import TableInfoMySQL
 from app.repositories.mysql.meta.mappers.column_info_mapper import ColumnInfoMapper
 from app.repositories.mysql.meta.mappers.column_metric_mapper import ColumnMetricMapper
@@ -55,6 +57,30 @@ class MetaMySQLRepository:
                 for column_metric in column_metrics
             ]
         )
+
+    async def replace_table_metadata(
+        self,
+        table_infos: list[TableInfo],
+        column_infos: list[ColumnInfo],
+    ) -> None:
+        """在当前事务中完整替换表和字段元数据，保证重复构建幂等。"""
+
+        await self.session.execute(delete(ColumnInfoMySQL))
+        await self.session.execute(delete(TableInfoMySQL))
+        self.save_table_infos(table_infos)
+        self.save_column_infos(column_infos)
+
+    async def replace_metric_metadata(
+        self,
+        metric_infos: list[MetricInfo],
+        column_metrics: list[ColumnMetric],
+    ) -> None:
+        """在当前事务中完整替换指标及字段关系，移除已失效配置。"""
+
+        await self.session.execute(delete(ColumnMetricMySQL))
+        await self.session.execute(delete(MetricInfoMySQL))
+        self.save_metric_infos(metric_infos)
+        self.save_column_metrics(column_metrics)
 
     async def get_column_info_by_id(self, id: str) -> ColumnInfo | None:
         """按字段 id 查询字段元数据，供召回信息合并阶段补齐字段上下文"""

@@ -73,7 +73,7 @@ data: {"type":"error","message":"查询处理失败，请使用 request_id 联�
 
 `.github/workflows/ci.yml` 包含两个独立任务：
 
-- backend：Ruff、格式、106 个测试、Prompt 离线评测、召回评测集校验；
+- backend：Ruff、格式、108 个测试、Prompt 离线评测、召回评测集校验；
 - frontend：锁文件安装、TypeScript 检查和 Vite 生产构建。
 
 外部服务在线评测不进入默认 PR 门禁，避免 CI 依赖生产密钥和长生命周期服务。
