@@ -73,7 +73,7 @@ Elasticsearch 和 Embedding 状态只通过受保护的 `/api/diagnostics` 返�
 
 `.github/workflows/ci.yml` 包含两个独立任务：
 
-- backend：Ruff、格式、116 个测试、Prompt 离线评测、召回评测集校验；
+- backend：Ruff、格式、117 个测试、Prompt 离线评测、召回评测集校验；
 - frontend：锁文件安装、TypeScript 检查和 Vite 生产构建。
 
 外部服务在线评测不进入默认 PR 门禁，避免 CI 依赖生产密钥和长生命周期服务。

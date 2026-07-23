@@ -117,6 +117,7 @@ class QueryService:
             ):
                 QUERY_STREAMS.labels(outcome, error_category).inc()
                 QUERY_STREAM_DURATION.labels(outcome).observe(duration)
+            if app_config.observability.enabled:
                 audit_event(
                     "query_stream_completed",
                     component="query",

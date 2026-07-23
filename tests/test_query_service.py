@@ -1,10 +1,12 @@
 """问数服务 SSE 编码、错误脱敏和取消传播测试。"""
 
 import asyncio
+import importlib
 import json
 
 import pytest
 
+from app.config.app_config import app_config
 from app.core.context import request_id_ctx_var
 from app.services.query_service import QueryService
 
@@ -78,3 +80,28 @@ def test_query_restores_context_after_stream_finishes() -> None:
 def test_query_propagates_client_cancellation() -> None:
     with pytest.raises(asyncio.CancelledError):
         asyncio.run(collect_events(make_service(CancelledGraph()), "req-cancelled"))
+
+
+def test_query_completion_audit_remains_when_metrics_are_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    query_service_module = importlib.import_module("app.services.query_service")
+    metrics_disabled_config = app_config.model_copy(
+        update={
+            "observability": app_config.observability.model_copy(
+                update={"metrics_enabled": False}
+            )
+        }
+    )
+    events: list[str] = []
+
+    monkeypatch.setattr(query_service_module, "app_config", metrics_disabled_config)
+    monkeypatch.setattr(
+        query_service_module,
+        "audit_event",
+        lambda event, **_fields: events.append(event),
+    )
+
+    asyncio.run(collect_events(make_service(SuccessfulGraph()), "req-audit"))
+
+    assert "query_stream_completed" in events

@@ -17,7 +17,7 @@ from app.clients.mysql_client_manager import (
     meta_mysql_client_manager,
 )
 from app.clients.qdrant_client_manager import qdrant_client_manager
-from app.core.log import logger
+from app.observability.logging import log_failure
 
 
 @asynccontextmanager
@@ -44,5 +44,5 @@ async def lifespan(app: FastAPI):
         for manager in reversed(initialized):
             try:
                 await manager.close()
-            except Exception:
-                logger.exception("关闭应用资源失败：{}", type(manager).__name__)
+            except Exception as error:
+                log_failure("lifecycle", f"close_{type(manager).__name__}", error)
