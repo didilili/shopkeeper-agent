@@ -42,7 +42,8 @@ API Key 是服务端密钥，不应写入浏览器构建产物。生产环境中
 ## 4. SSE 错误边界
 
 正常事件继续使用原有 `progress` 和 `result` 协议。工作流异常时，服务端日志
-保留完整堆栈，客户端只收到脱敏错误和 `request_id`：
+只记录固定错误分类和 `request_id`，不记录原始异常正文或堆栈；客户端只收到
+脱敏错误和 `request_id`：
 
 ```text
 data: {"type":"error","message":"查询处理失败，请使用 request_id 联系管理员。","request_id":"..."}
