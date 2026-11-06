@@ -12,7 +12,7 @@
 ![Stars](https://img.shields.io/github/stars/didilili/shopkeeper-agent?logo=github&style=flat)
 [![Read Online](https://img.shields.io/badge/在线教程-点击访问-blue?logo=bookstack)](https://didilili.github.io/ai-agents-from-zero/#/%E5%AE%9E%E6%88%98%E9%A1%B9%E7%9B%AE-%E7%94%B5%E5%95%86%E9%97%AE%E6%95%B0/0-%E5%89%8D%E8%A8%80)
 
-[快速开始](#quick-start) • [项目亮点](#features) • [系统架构](#architecture) • [配套教程](#tutorials) • [加入社群](#community)
+[快速开始](#quick-start) • [项目亮点](#features) • [系统架构](#architecture) • [配套教程](#tutorials) • [面试题库](#mianstack) • [加入社群](#community)
 
   <p>
     <a href="https://didilili.github.io/ai-agents-from-zero/#/%E5%AE%9E%E6%88%98%E9%A1%B9%E7%9B%AE-%E7%94%B5%E5%95%86%E9%97%AE%E6%95%B0/0-%E5%89%8D%E8%A8%80">📚 在线阅读</a>
@@ -30,6 +30,18 @@
 > 如果你想系统学习「AI智能体 大模型应用开发」，也可直接从系统教程 [AI 智能体实战速成指南-大模型入门](https://didilili.github.io/ai-agents-from-zero/#/) 开始。
 
 ![电商问数前端首页：样例问题、自然语言输入和智能数据分析 Agent 界面](docs/images/shopkeeper-agent-home.jpg)
+
+<a id="mianstack"></a>
+
+## 🎯 面栈 MianStack｜程序员面试题库天花板
+
+把「电商问数」写进简历，再把技术亮点讲清楚。**打造全网最有价值的面试题库！**
+
+- **简历有示例**：从项目描述、技术栈到主要工作，参考业务场景，提炼自己实际完成的技术亮点。
+- **项目有拆解**：对照架构、选型与源码，准备 NL2SQL、检索增强与 LangGraph 的项目追问。
+- **备考有重点**：真实面经关联高频题，结合原理、代码与图解，理清答题思路。
+
+👉 **[在线刷题](https://mianstack.com/)** · **[电商问数：简历示例与面试题](https://mianstack.com/project/shopkeeper-agent/)** · **[GitHub 开源仓库，欢迎 Star ⭐](https://github.com/didilili/mianstack)**
 
 <a id="project-introduction"></a>
 
